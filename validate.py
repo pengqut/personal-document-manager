@@ -5,14 +5,14 @@ import secrets
 USERNAME_PATTERN = re.compile(r'^[A-Za-z0-9_]{6,10}$')
 
 
-# Return an error message if the username breaks a rule, or None if it is fine.
+# Validate a username
 def validate_username(username):
     if not USERNAME_PATTERN.fullmatch(username or ''):
         return 'Username must be 6 to 10 characters. Only letters, numbers and underscore are allowed.'
     return None
 
 
-# Return an error message if the password breaks a rule, or None if it is fine.
+# Validate a password
 def validate_password(password):
     password = password or ''
     if len(password) < 8:
@@ -26,14 +26,14 @@ def validate_password(password):
     return None
 
 
-# Turn a plain password into a salted hash. The plain password is never stored.
+# Hash a password
 def hash_password(password):
     salt = secrets.token_hex(8)
     digest = hashlib.sha256((salt + password).encode('utf-8')).hexdigest()
     return salt + '$' + digest
 
 
-# Check a plain password against the salted hash saved in the database.
+# Check a password
 def check_password(password, stored_hash):
     salt, digest = stored_hash.split('$')
     return hashlib.sha256((salt + password).encode('utf-8')).hexdigest() == digest

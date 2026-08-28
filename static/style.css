@@ -66,3 +66,68 @@ body {
 .message-success {
     color: #15803d;
 }
+
+/* The login and register pages centre a single card with the rules
+   above. The app pages (after login) use a full width header instead,
+   so that layout is switched off here. */
+body.app-page {
+    display: block;
+    padding-top: 0;
+}
+
+.app-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 20px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.app-header h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.app-header a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.app-content {
+    max-width: 900px;
+    margin: 32px auto;
+    padding: 0 32px;
+}
+
+.upload-card {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+    cursor: pointer;
+}
+
+.upload-card.dz-drag-hover {
+    border-color: #2563eb;
+    background-color: #f9fafb;
+}
+
+.upload-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.upload-hint {
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+/* Dropzone adds its own preview thumbnails and progress bars by
+   default. This project shows a plain text message instead, so those
+   default elements are hidden. */
+.dz-preview, .dz-progress {
+    display: none;
+}

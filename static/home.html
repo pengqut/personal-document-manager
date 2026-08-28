@@ -2,38 +2,94 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Personal Document Manager - Home</title>
+<title>Personal Document Manager</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.css" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="app-page">
 
-<div class="container" style="max-width: 500px; margin-top: 80px;">
-    <div class="card p-4">
-        <h4>Welcome, <span id="username"></span></h4>
-        <p class="text-muted">The file list will be added here in a later task.</p>
-        <button id="logout-button" class="btn btn-outline-secondary">Logout</button>
-    </div>
+<div class="app-header">
+    <h1>Personal Document Manager</h1>
+    <a href="#" id="logout-link">Log out</a>
 </div>
 
+<div class="app-content">
+
+    <div id="upload-box" class="upload-card">
+        <div class="dz-message">
+            <p class="upload-title">Click or drag a file here to upload</p>
+            <p class="upload-hint" id="quota-hint">Loading limits...</p>
+            <p id="upload-message" style="display:none;"></p>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.js"></script>
 <script>
-// If there is no logged in user, send the visitor back to the login page.
-async function checkLogin() {
-    const res = await fetch('/api/me');
+// Attach Dropzone by hand
+Dropzone.autoDiscover = false;
+
+const quotaHint = document.getElementById('quota-hint');
+const uploadMessage = document.getElementById('upload-message');
+let limits = { max_file_mb: 0, user_file_limit: 0, used: 0 };
+
+// Show an upload message
+function showUploadMessage(text, isError) {
+    uploadMessage.className = isError ? 'message-error' : 'message-success';
+    uploadMessage.textContent = text;
+    uploadMessage.style.display = 'block';
+}
+
+// Update the quota hint
+function updateHint() {
+    const remaining = limits.user_file_limit - limits.used;
+    quotaHint.textContent = 'Max file size: ' + limits.max_file_mb + ' MB' +
+        '  ·  Remaining quota: ' + remaining + ' / ' + limits.user_file_limit + ' files';
+}
+
+// Load the upload limits
+async function loadLimits() {
+    const res = await fetch('/api/limits');
     if (!res.ok) {
         window.location.href = 'login.html';
         return;
     }
-    const data = await res.json();
-    document.getElementById('username').textContent = data.username;
+    limits = await res.json();
+    updateHint();
+    setupDropzone();
 }
 
-document.getElementById('logout-button').addEventListener('click', async function () {
+// Set up the dropzone
+function setupDropzone() {
+    const dropzone = new Dropzone('#upload-box', {
+        url: '/api/upload',
+        paramName: 'file',
+        maxFilesize: limits.max_file_mb,
+        previewsContainer: false,
+        dictFileTooBig: 'This file is {{filesize}} MB, which is over the {{maxFilesize}} MB limit.'
+    });
+
+    dropzone.on('success', function (file, res) {
+        showUploadMessage('Uploaded successfully. Category: ' + res.category, false);
+        limits.used += 1;
+        updateHint();
+    });
+
+    dropzone.on('error', function (file, errorText) {
+        const text = (errorText && errorText.error) ? errorText.error : errorText;
+        showUploadMessage(text, true);
+    });
+}
+
+document.getElementById('logout-link').addEventListener('click', async function (event) {
+    event.preventDefault();
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = 'login.html';
 });
 
-checkLogin();
+loadLimits();
 </script>
 
 </body>

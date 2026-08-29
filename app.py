@@ -167,5 +167,20 @@ def upload():
     return {'ok': True, 'category': category}
 
 
+# List a user's files
+@route('/api/files')
+def get_files():
+    user = current_user()
+    if not user:
+        response.status = 401
+        return {'error': 'Not logged in.'}
+    rows = db.execute(
+        'SELECT id, filename, category, size, uploaded_at FROM files '
+        'WHERE user_id = ? ORDER BY uploaded_at DESC',
+        (user['id'],)
+    ).fetchall()
+    return {'files': [dict(row) for row in rows]}
+
+
 if __name__ == '__main__':
     run(host='localhost', port=8080, debug=True)

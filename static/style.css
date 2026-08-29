@@ -67,9 +67,6 @@ body {
     color: #15803d;
 }
 
-/* The login and register pages centre a single card with the rules
-   above. The app pages (after login) use a full width header instead,
-   so that layout is switched off here. */
 body.app-page {
     display: block;
     padding-top: 0;
@@ -125,9 +122,72 @@ body.app-page {
     margin-bottom: 0;
 }
 
-/* Dropzone adds its own preview thumbnails and progress bars by
-   default. This project shows a plain text message instead, so those
-   default elements are hidden. */
 .dz-preview, .dz-progress {
     display: none;
+}
+
+.category-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 24px 0 16px;
+}
+
+.category-tab {
+    border: none;
+    background: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: #374151;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.category-tab.active {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+.file-table {
+    width: 100%;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    border-collapse: collapse;
+    overflow: hidden;
+}
+
+.file-table th {
+    background-color: #f9fafb;
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 0.85rem;
+    color: #374151;
+}
+
+.file-table th.sort {
+    cursor: pointer;
+    user-select: none;
+}
+
+.file-table th.sort.asc::after {
+    content: ' \25B2';
+}
+
+.file-table th.sort.desc::after {
+    content: ' \25BC';
+}
+
+.file-table td {
+    padding: 12px 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.empty-message {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    text-align: center;
+    color: #6b7280;
+    padding: 32px 20px;
+    margin: 16px 0 0;
 }

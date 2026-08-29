@@ -24,9 +24,27 @@
         </div>
     </div>
 
+    <div class="category-tabs" id="category-tabs"></div>
+
+    <div id="file-list">
+        <table class="file-table">
+            <thead>
+                <tr>
+                    <th class="sort" data-sort="filename">Name</th>
+                    <th>Category</th>
+                    <th class="sort" data-sort="uploaded_at">Uploaded</th>
+                    <th class="sort" data-sort="sizebytes">Size</th>
+                </tr>
+            </thead>
+            <tbody class="list" id="file-table-body"></tbody>
+        </table>
+        <p id="empty-message" class="empty-message" style="display:none;">No files in this category yet</p>
+    </div>
+
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/list.js/2.3.1/list.min.js"></script>
 <script>
 // Attach Dropzone by hand
 Dropzone.autoDiscover = false;
@@ -75,9 +93,12 @@ function setupDropzone() {
         showUploadMessage('Uploaded successfully. Category: ' + res.category, false);
         limits.used += 1;
         updateHint();
+        loadFiles();
     });
 
     dropzone.on('error', function (file, errorText) {
+        // A server error comes back as {error: "..."}. A client side check
+        // (like the file size check above) comes back as plain text.
         const text = (errorText && errorText.error) ? errorText.error : errorText;
         showUploadMessage(text, true);
     });
@@ -89,7 +110,91 @@ document.getElementById('logout-link').addEventListener('click', async function 
     window.location.href = 'login.html';
 });
 
+// The five categories from requirement R4, plus an "all" tab
+const CATEGORY_TABS = [
+    { value: 'all', label: 'All' },
+    { value: 'document', label: 'Documents' },
+    { value: 'image', label: 'Images' },
+    { value: 'audio', label: 'Audio' },
+    { value: 'video', label: 'Video' },
+    { value: 'other', label: 'Other' }
+];
+const CATEGORY_LABELS = { document: 'Documents', image: 'Images', audio: 'Audio', video: 'Video', other: 'Other' };
+
+const categoryTabs = document.getElementById('category-tabs');
+const emptyMessage = document.getElementById('empty-message');
+
+let activeCategory = 'all';
+
+// Turn a byte count into a readable size
+function formatSize(bytes) {
+    if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(1) + ' KB';
+    }
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+const fileList = new List('file-list', {
+    valueNames: ['filename', 'category_label', 'uploaded_at', 'size', { data: ['category'] }, { data: ['sizebytes'] }],
+    item: '<tr><td class="filename"></td><td class="category_label"></td><td class="uploaded_at"></td><td class="size"></td></tr>'
+});
+
+// Show the "no files" message whenever a filter or sort leaves the list empty
+fileList.on('updated', function () {
+    emptyMessage.style.display = fileList.visibleItems.length === 0 ? 'block' : 'none';
+});
+
+// Build the category tab buttons
+function renderTabs() {
+    categoryTabs.innerHTML = '';
+    CATEGORY_TABS.forEach(function (tab) {
+        const button = document.createElement('button');
+        button.className = 'category-tab' + (tab.value === activeCategory ? ' active' : '');
+        button.textContent = tab.label;
+        button.addEventListener('click', function () {
+            activeCategory = tab.value;
+            renderTabs();
+            applyCategoryFilter();
+        });
+        categoryTabs.appendChild(button);
+    });
+}
+
+// Show only the files that match the active tab
+function applyCategoryFilter() {
+    if (activeCategory === 'all') {
+        fileList.filter();
+    } else {
+        fileList.filter(function (item) {
+            return item.values().category === activeCategory;
+        });
+    }
+}
+
+// Load the file list
+async function loadFiles() {
+    const res = await fetch('/api/files');
+    if (!res.ok) {
+        return;
+    }
+    const data = await res.json();
+    fileList.clear();
+    fileList.add(data.files.map(function (file) {
+        return {
+            filename: file.filename,
+            category: file.category,
+            category_label: CATEGORY_LABELS[file.category] || file.category,
+            uploaded_at: file.uploaded_at.split(' ')[0],
+            size: formatSize(file.size),
+            sizebytes: file.size
+        };
+    }));
+    applyCategoryFilter();
+}
+
 loadLimits();
+renderTabs();
+loadFiles();
 </script>
 
 </body>

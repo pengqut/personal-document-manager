@@ -4,7 +4,9 @@ import secrets
 
 from bottle import route, run, request, response, redirect, static_file
 
+import classify
 import database
+import limits
 import validate
 
 DB_PATH = 'pdm.db'
@@ -136,7 +138,7 @@ def upload():
         response.status = 401
         return {'error': 'Not logged in.'}
 
-    if count_user_files(user['id']) >= LIMITS['user_file_limit']:
+    if limits.is_quota_reached(count_user_files(user['id']), LIMITS['user_file_limit']):
         response.status = 403
         return {'error': 'You have reached your limit of %d files.' % LIMITS['user_file_limit']}
 
@@ -146,8 +148,7 @@ def upload():
         return {'error': 'No file was sent.'}
 
     file_bytes = upload_file.file.read()
-    max_bytes = LIMITS['max_file_mb'] * 1024 * 1024
-    if len(file_bytes) > max_bytes:
+    if limits.is_file_too_big(len(file_bytes), LIMITS['max_file_mb']):
         response.status = 400
         return {'error': 'This file is over the %d MB limit.' % LIMITS['max_file_mb']}
 
@@ -157,8 +158,7 @@ def upload():
     with open(os.path.join(UPLOAD_DIR, stored_name), 'wb') as saved_file:
         saved_file.write(file_bytes)
 
-    # Real classification by file type is added in the next Jira task.
-    category = 'Unclassified'
+    category = classify.classify(original_name)
     db.execute(
         'INSERT INTO files (user_id, filename, stored_name, category, size) VALUES (?, ?, ?, ?, ?)',
         (user['id'], original_name, stored_name, category, len(file_bytes))

@@ -16,6 +16,8 @@
 
 <div class="app-content">
 
+    <p id="action-message" class="action-message" style="display:none;"></p>
+
     <div id="upload-box" class="upload-card">
         <div class="dz-message">
             <p class="upload-title">Click or drag a file here to upload</p>
@@ -34,6 +36,7 @@
                     <th>Category</th>
                     <th class="sort" data-sort="uploaded_at">Uploaded</th>
                     <th class="sort" data-sort="sizebytes">Size</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody class="list" id="file-table-body"></tbody>
@@ -43,31 +46,52 @@
 
 </div>
 
+<div id="category-dialog" class="dialog-overlay" style="display:none;">
+    <div class="dialog-card">
+        <h2 class="dialog-title">Change category</h2>
+        <p class="dialog-subtitle" id="category-dialog-filename"></p>
+        <select id="category-dialog-select" class="dialog-select"></select>
+        <div class="dialog-actions">
+            <button type="button" class="btn-outline" id="category-dialog-cancel">Cancel</button>
+            <button type="button" class="btn-solid-primary" id="category-dialog-save">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="delete-dialog" class="dialog-overlay" style="display:none;">
+    <div class="dialog-card">
+        <h2 class="dialog-title">Delete this file?</h2>
+        <p class="dialog-text">This will permanently delete <span id="delete-dialog-filename"></span>.</p>
+        <p class="dialog-text">This action cannot be undone.</p>
+        <div class="dialog-actions">
+            <button type="button" class="btn-outline" id="delete-dialog-cancel">Cancel</button>
+            <button type="button" class="btn-solid-danger" id="delete-dialog-confirm">Delete</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/list.js/2.3.1/list.min.js"></script>
 <script>
-// Attach Dropzone by hand
+
 Dropzone.autoDiscover = false;
 
 const quotaHint = document.getElementById('quota-hint');
 const uploadMessage = document.getElementById('upload-message');
 let limits = { max_file_mb: 0, user_file_limit: 0, used: 0 };
 
-// Show an upload message
 function showUploadMessage(text, isError) {
     uploadMessage.className = isError ? 'message-error' : 'message-success';
     uploadMessage.textContent = text;
     uploadMessage.style.display = 'block';
 }
 
-// Update the quota hint
 function updateHint() {
     const remaining = limits.user_file_limit - limits.used;
     quotaHint.textContent = 'Max file size: ' + limits.max_file_mb + ' MB' +
         '  ·  Remaining quota: ' + remaining + ' / ' + limits.user_file_limit + ' files';
 }
 
-// Load the upload limits
 async function loadLimits() {
     const res = await fetch('/api/limits');
     if (!res.ok) {
@@ -79,7 +103,6 @@ async function loadLimits() {
     setupDropzone();
 }
 
-// Set up the dropzone
 function setupDropzone() {
     const dropzone = new Dropzone('#upload-box', {
         url: '/api/upload',
@@ -97,8 +120,6 @@ function setupDropzone() {
     });
 
     dropzone.on('error', function (file, errorText) {
-        // A server error comes back as {error: "..."}. A client side check
-        // (like the file size check above) comes back as plain text.
         const text = (errorText && errorText.error) ? errorText.error : errorText;
         showUploadMessage(text, true);
     });
@@ -110,7 +131,6 @@ document.getElementById('logout-link').addEventListener('click', async function 
     window.location.href = 'login.html';
 });
 
-// The five categories from requirement R4, plus an "all" tab
 const CATEGORY_TABS = [
     { value: 'all', label: 'All' },
     { value: 'document', label: 'Documents' },
@@ -126,7 +146,6 @@ const emptyMessage = document.getElementById('empty-message');
 
 let activeCategory = 'all';
 
-// Turn a byte count into a readable size
 function formatSize(bytes) {
     if (bytes < 1024 * 1024) {
         return (bytes / 1024).toFixed(1) + ' KB';
@@ -135,16 +154,33 @@ function formatSize(bytes) {
 }
 
 const fileList = new List('file-list', {
-    valueNames: ['filename', 'category_label', 'uploaded_at', 'size', { data: ['category'] }, { data: ['sizebytes'] }],
-    item: '<tr><td class="filename"></td><td class="category_label"></td><td class="uploaded_at"></td><td class="size"></td></tr>'
+    valueNames: [
+        'id',
+        'filename',
+        { name: 'download-link', attr: 'href' },
+        'category_label',
+        'uploaded_at',
+        'size',
+        { data: ['category'] },
+        { data: ['sizebytes'] }
+    ],
+    item: '<tr>' +
+        '<td class="id" style="display:none;"></td>' +
+        '<td><a class="download-link" href="#"><span class="filename"></span></a></td>' +
+        '<td class="category_label"></td>' +
+        '<td class="uploaded_at"></td>' +
+        '<td class="size"></td>' +
+        '<td class="actions-cell">' +
+        '<button type="button" class="btn-outline-small btn-change-category">Change category</button>' +
+        '<button type="button" class="btn-outline-small btn-delete">Delete</button>' +
+        '</td>' +
+        '</tr>'
 });
 
-// Show the "no files" message whenever a filter or sort leaves the list empty
 fileList.on('updated', function () {
     emptyMessage.style.display = fileList.visibleItems.length === 0 ? 'block' : 'none';
 });
 
-// Build the category tab buttons
 function renderTabs() {
     categoryTabs.innerHTML = '';
     CATEGORY_TABS.forEach(function (tab) {
@@ -160,7 +196,6 @@ function renderTabs() {
     });
 }
 
-// Show only the files that match the active tab
 function applyCategoryFilter() {
     if (activeCategory === 'all') {
         fileList.filter();
@@ -171,7 +206,6 @@ function applyCategoryFilter() {
     }
 }
 
-// Load the file list
 async function loadFiles() {
     const res = await fetch('/api/files');
     if (!res.ok) {
@@ -181,7 +215,9 @@ async function loadFiles() {
     fileList.clear();
     fileList.add(data.files.map(function (file) {
         return {
+            id: file.id,
             filename: file.filename,
+            'download-link': '/api/download/' + file.id,
             category: file.category,
             category_label: CATEGORY_LABELS[file.category] || file.category,
             uploaded_at: file.uploaded_at.split(' ')[0],
@@ -191,6 +227,94 @@ async function loadFiles() {
     }));
     applyCategoryFilter();
 }
+
+const actionMessage = document.getElementById('action-message');
+function showActionMessage(text, isError) {
+    actionMessage.className = 'action-message ' + (isError ? 'message-error' : 'message-success');
+    actionMessage.textContent = text;
+    actionMessage.style.display = 'block';
+}
+
+const categorySelect = document.getElementById('category-dialog-select');
+Object.keys(CATEGORY_LABELS).forEach(function (category) {
+    const option = document.createElement('option');
+    option.value = category;
+    option.textContent = CATEGORY_LABELS[category];
+    categorySelect.appendChild(option);
+});
+
+const categoryDialog = document.getElementById('category-dialog');
+const deleteDialog = document.getElementById('delete-dialog');
+let activeFileId = null;
+
+function openCategoryDialog(fileId, filename, currentCategory) {
+    activeFileId = fileId;
+    document.getElementById('category-dialog-filename').textContent = 'File: ' + filename;
+    categorySelect.value = currentCategory;
+    categoryDialog.style.display = 'flex';
+}
+
+function openDeleteDialog(fileId, filename) {
+    activeFileId = fileId;
+    document.getElementById('delete-dialog-filename').textContent = filename;
+    deleteDialog.style.display = 'flex';
+}
+
+function closeDialogs() {
+    categoryDialog.style.display = 'none';
+    deleteDialog.style.display = 'none';
+    activeFileId = null;
+}
+
+document.getElementById('file-list').addEventListener('click', function (event) {
+    const row = event.target.closest('tr');
+    if (!row) {
+        return;
+    }
+    const fileId = row.querySelector('.id').textContent;
+    const filename = row.querySelector('.filename').textContent;
+
+    if (event.target.classList.contains('btn-change-category')) {
+        openCategoryDialog(fileId, filename, row.dataset.category);
+    } else if (event.target.classList.contains('btn-delete')) {
+        openDeleteDialog(fileId, filename);
+    }
+});
+
+document.getElementById('category-dialog-cancel').addEventListener('click', closeDialogs);
+document.getElementById('delete-dialog-cancel').addEventListener('click', closeDialogs);
+
+document.getElementById('category-dialog-save').addEventListener('click', async function () {
+    const fileId = activeFileId;
+    const res = await fetch('/api/files/' + fileId + '/category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'category=' + encodeURIComponent(categorySelect.value)
+    });
+    closeDialogs();
+    if (res.ok) {
+        showActionMessage('Category updated successfully.', false);
+        loadFiles();
+    } else {
+        const data = await res.json();
+        showActionMessage(data.error || 'Could not update the category.', true);
+    }
+});
+
+document.getElementById('delete-dialog-confirm').addEventListener('click', async function () {
+    const fileId = activeFileId;
+    const res = await fetch('/api/files/' + fileId + '/delete', { method: 'POST' });
+    closeDialogs();
+    if (res.ok) {
+        showActionMessage('File deleted successfully.', false);
+        limits.used -= 1;
+        updateHint();
+        loadFiles();
+    } else {
+        const data = await res.json();
+        showActionMessage(data.error || 'Could not delete the file.', true);
+    }
+});
 
 loadLimits();
 renderTabs();

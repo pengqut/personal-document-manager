@@ -18,6 +18,7 @@ EXTENSION_MAP = {
     ]
 }
 
+CATEGORIES = list(EXTENSION_MAP.keys()) + ['other']
 
 # Work out a file's category
 def classify(filename):

@@ -39,12 +39,6 @@ def index():
     redirect('/login.html')
 
 
-# Serve static files
-@route('/<filename:path>')
-def serve_static(filename):
-    return static_file(filename, root=STATIC_DIR)
-
-
 # Register a new user
 @route('/api/register', method='POST')
 def register():
@@ -152,9 +146,11 @@ def upload():
         response.status = 400
         return {'error': 'This file is over the %d MB limit.' % LIMITS['max_file_mb']}
 
-    # Only keep the plain file name, in case the browser sends a path with it.
-    original_name = os.path.basename(upload_file.filename)
-    stored_name = secrets.token_hex(8) + '_' + original_name
+    raw_name = upload_file.raw_filename
+    if not isinstance(raw_name, str):
+        raw_name = raw_name.decode('utf8', 'ignore')
+    original_name = os.path.basename(raw_name.replace('\\', os.path.sep))
+    stored_name = secrets.token_hex(8) + '_' + upload_file.filename
     with open(os.path.join(UPLOAD_DIR, stored_name), 'wb') as saved_file:
         saved_file.write(file_bytes)
 
@@ -180,6 +176,78 @@ def get_files():
         (user['id'],)
     ).fetchall()
     return {'files': [dict(row) for row in rows]}
+
+
+# Download a file
+@route('/api/download/<file_id:int>')
+def download_file(file_id):
+    user = current_user()
+    if not user:
+        response.status = 401
+        return {'error': 'Not logged in.'}
+    file_row = db.execute(
+        'SELECT * FROM files WHERE id = ? AND user_id = ?',
+        (file_id, user['id'])
+    ).fetchone()
+    if not file_row:
+        response.status = 404
+        return {'error': 'File not found.'}
+    return static_file(file_row['stored_name'], root=UPLOAD_DIR, download=file_row['filename'])
+
+
+# Change a file's category
+@route('/api/files/<file_id:int>/category', method='POST')
+def change_category(file_id):
+    user = current_user()
+    if not user:
+        response.status = 401
+        return {'error': 'Not logged in.'}
+
+    new_category = request.forms.getunicode('category', '')
+    if new_category not in classify.CATEGORIES:
+        response.status = 400
+        return {'error': 'Not a valid category.'}
+
+    file_row = db.execute(
+        'SELECT id FROM files WHERE id = ? AND user_id = ?',
+        (file_id, user['id'])
+    ).fetchone()
+    if not file_row:
+        response.status = 404
+        return {'error': 'File not found.'}
+
+    db.execute('UPDATE files SET category = ? WHERE id = ?', (new_category, file_id))
+    db.commit()
+    return {'ok': True, 'category': new_category}
+
+
+# Delete a file
+@route('/api/files/<file_id:int>/delete', method='POST')
+def delete_file(file_id):
+    user = current_user()
+    if not user:
+        response.status = 401
+        return {'error': 'Not logged in.'}
+
+    file_row = db.execute(
+        'SELECT * FROM files WHERE id = ? AND user_id = ?',
+        (file_id, user['id'])
+    ).fetchone()
+    if not file_row:
+        response.status = 404
+        return {'error': 'File not found.'}
+
+    stored_path = os.path.join(UPLOAD_DIR, file_row['stored_name'])
+    if os.path.exists(stored_path):
+        os.remove(stored_path)
+    db.execute('DELETE FROM files WHERE id = ?', (file_id,))
+    db.commit()
+    return {'ok': True}
+
+
+@route('/<filename:path>')
+def serve_static(filename):
+    return static_file(filename, root=STATIC_DIR)
 
 
 if __name__ == '__main__':

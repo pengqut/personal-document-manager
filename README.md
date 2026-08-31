@@ -14,7 +14,7 @@ A small practice project for IFN636.
 
 3. Open this address in a browser:
 
-   http://localhost:8080/login.html
+   http://<Server IP address>:80/login.html
 
 ## Testing
 

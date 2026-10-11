@@ -1,0 +1,7 @@
+.vs/
+__pycache__/
+tests/__pycache__/
+*.pyc
+.pytest_cache/
+tests/test_results/
+pdm.db

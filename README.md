@@ -5,19 +5,20 @@ The system helps users organize uploaded files into different categories.
 
 ## Architecture
 
-Built with a Bottle server that serves static pages and communicates via a JSON-based API with an SQLite database.
+The application uses a Bottle server that serves static web pages and communicates with an SQLite database through API endpoints.
 
-- `app.py` — routes, service logic and the API
-- `validate.py` — username and password rules, password hashing
+- `app.py` — application routes, service logic and API endpoints
+- `validate.py` — username and password validation and password hashing
 - `limits.py` — file size and file count checks
-- `classify.py` — maps a file extension to a category
-- `database.py` — SQLite schema and connection
-- `static/` — web files
-- `config.json` - system configuration file
-- `pdm.db` - database file
+- `classify.py` — maps file extensions to categories
+- `database.py` — SQLite schema and database connection
+- `config.json` — system configuration
+- `static/` — frontend web files
+- `tests/` — software test files and consolidated test runner
+- `uploads/` — uploaded files
+- `pdm.db` — local database file
 
-User uploaded files go into `uploads/` under a random name, so two files with the same name cannot overwrite each other.
-
+Uploaded files are stored in the `uploads/` directory using randomly generated names to prevent files with the same original name from overwriting each other.
 ## How to run (DEV)
 
 - `pip install -r requirements.txt`
@@ -26,7 +27,70 @@ User uploaded files go into `uploads/` under a random name, so two files with th
 
 ## Testing
 
-- `python3 -m unittest discover -v`
+Each developer is responsible for creating and maintaining software tests for the feature they develop.
+
+Individual test files are stored in the `tests/` directory and follow the naming format:
+
+```text
+test_*.py
+```
+
+Examples:
+
+```text
+tests/test_validate.py
+tests/test_limits.py
+tests/test_classify.py
+```
+
+### Run All Software Tests
+
+A consolidated test runner is provided to run all developer test files together:
+
+```bash
+python tests/run_all_tests.py
+```
+
+The runner:
+
+- Finds all `test_*.py` files in the `tests/` directory
+- Executes the tests using PyTest
+- Displays individual PASS/FAIL results
+- Displays the overall test result
+- Saves the complete execution record in `tests/test_results/`
+
+Example result:
+
+```text
+============================================================
+Overall result: PASSED
+Test record: tests/test_results/test_results_YYYY-MM-DD_HH-MM-SS.txt
+============================================================
+```
+
+### Run an Individual Test File
+
+A specific test file can also be executed separately:
+
+```bash
+python -m pytest tests/test_validate.py -v
+```
+
+This allows each developer to test their own feature independently before running the complete project test suite.
+
+## Testing Evidence
+
+Testing evidence may include:
+
+- Jira testing tasks
+- Individual software test files
+- Consolidated software test results
+- GitHub commits and pull requests
+- API testing results
+- Load testing results
+- Monitoring results
+
+These outputs will be used as evidence for the Assignment 2 report and demonstration.
 
 ## Deployment
 

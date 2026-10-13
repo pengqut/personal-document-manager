@@ -305,12 +305,14 @@ class Database:
         finally:
             conn.close()
 
-    # Create the schema on an empty database. An existing database must
+    # Create a missing PostgreSQL database, then its schema. An existing database must
     # already use the current layout; old A1 files are rejected. Running
     # it twice is safe. Every failure surfaces as a StorageError so a
     # failed startup reports one clean message.
     def initialize_schema(self):
         try:
+            if self.backend == 'postgresql':
+                self._ensure_postgresql_database()
             self._create_schema()
         except StorageError:
             raise
@@ -318,6 +320,54 @@ class Database:
             raise StorageError(
                 'Could not prepare the database schema.'
             ) from exc
+
+    # Try the configured database first. If it cannot be opened, check
+    # postgres before deciding whether the database actually needs creation.
+    # Connection errors do not always include a PostgreSQL SQLSTATE.
+    def _ensure_postgresql_database(self):
+        try:
+            with self._get_engine().connect():
+                return
+        except sa.exc.OperationalError as exc:
+            connection_error = exc
+
+        maintenance = sa.create_engine(
+            self._engine_url().set(database='postgres'),
+            isolation_level='AUTOCOMMIT',
+            connect_args={'connect_timeout': POSTGRES_CONNECT_TIMEOUT},
+            poolclass=NullPool,
+        )
+        try:
+            with maintenance.connect() as conn:
+                exists = conn.execute(
+                    sa.text('SELECT 1 FROM pg_database WHERE datname = :name'),
+                    {'name': self.location['dbname']},
+                ).scalar()
+                if exists:
+                    # The database exists: do not treat authentication or
+                    # access failures as a request to create another one.
+                    raise StorageError(
+                        'Could not connect to the existing PostgreSQL database.'
+                    ) from connection_error
+                name = maintenance.dialect.identifier_preparer.quote_identifier(
+                    self.location['dbname']
+                )
+                try:
+                    conn.exec_driver_sql('CREATE DATABASE ' + name)
+                except sa.exc.DBAPIError as exc:
+                    sqlstate = getattr(exc.orig, 'sqlstate', None)
+                    if sqlstate == '42P04':
+                        # Another startup created the database first.
+                        return
+                    if sqlstate == '42501':
+                        raise StorageError(
+                            'The PostgreSQL database does not exist and the '
+                            'configured user cannot create it. Grant CREATEDB '
+                            'or ask an administrator to create the database.'
+                        ) from exc
+                    raise
+        finally:
+            maintenance.dispose()
 
     def _create_schema(self):
         engine = self._get_engine()

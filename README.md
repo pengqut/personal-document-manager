@@ -21,9 +21,15 @@ The application uses a Bottle server that serves static web pages and communicat
 Uploaded files are stored in the `uploads/` directory using randomly generated names to prevent files with the same original name from overwriting each other.
 ## How to run (DEV)
 
-- `pip install -r requirements.txt`
-- `python3 app.py`
-- Open `http://localhost:80/login.html`
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+unset DATABASE_URL
+unset PDM_DB_PATH
+export PDM_PORT=8080
+python app.py
+```
 
 ## Testing
 

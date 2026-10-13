@@ -1,36 +1,78 @@
 import json
 import os
 import secrets
+import sys
 
-from bottle import route, run, request, response, redirect, static_file
+from bottle import (
+    HTTPError, HTTPResponse, install, redirect, request, response, route,
+    run, static_file,
+)
 
+import auth
 import classify
 import database
 import limits
 import validate
 
-DB_PATH = 'pdm.db'
-STATIC_DIR = 'static'
-UPLOAD_DIR = 'uploads'
-
-db = database.connect(DB_PATH)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+UPLOAD_DIR = os.environ.get('PDM_UPLOAD_DIR') or os.path.join(BASE_DIR, 'uploads')
+if not os.path.isabs(UPLOAD_DIR):
+    UPLOAD_DIR = os.path.join(BASE_DIR, UPLOAD_DIR)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-with open('config.json') as config_file:
+with open(os.path.join(BASE_DIR, 'config.json')) as config_file:
     LIMITS = json.load(config_file)
 
+# Configuration only; connections are opened per transaction.
+db = database.Database.from_environment(BASE_DIR)
+auth_service = auth.AuthService(db)
 
-# Look up the logged in user
+
+# Wrap every route and map exceptions to uniform JSON responses, so the
+# routes themselves contain only business logic. Bottle's own control
+# flow exceptions pass through untouched.
+def error_plugin(callback):
+    def wrapper(*args, **kwargs):
+        try:
+            return callback(*args, **kwargs)
+        except (HTTPResponse, HTTPError):
+            raise
+        except auth.NotAuthenticatedError:
+            response.status = 401
+            return {'error': 'Not logged in.'}
+        except auth.AuthenticationError:
+            response.status = 401
+            return {'error': 'Username or password is incorrect.'}
+        except auth.PermissionDeniedError:
+            response.status = 403
+            return {'error': 'Administrator rights are required.'}
+        except database.NotFoundError:
+            response.status = 404
+            return {'error': 'File not found.'}
+        except database.StorageError:
+            response.status = 503
+            return {'error': 'Service temporarily unavailable.'}
+        except Exception:
+            response.status = 500
+            return {'error': 'Internal server error.'}
+    return wrapper
+
+
+install(error_plugin)
+
+
+# Look up the logged in user through the shared auth service
 def current_user():
-    token = request.get_cookie('token')
-    if not token:
-        return None
-    return db.execute(
-        'SELECT users.* FROM sessions '
-        'JOIN users ON users.id = sessions.user_id '
-        'WHERE sessions.token = ?',
-        (token,)
-    ).fetchone()
+    return auth_service.current_user(request.get_cookie('token'))
+
+
+# Require a logged in user or raise NotAuthenticatedError (mapped to 401).
+def require_logged_in():
+    user = current_user()
+    if user is None:
+        raise auth.NotAuthenticatedError('Not logged in.')
+    return user
 
 
 # Redirect to the login page
@@ -50,46 +92,32 @@ def register():
         response.status = 400
         return {'error': error}
 
-    already_exists = db.execute(
-        'SELECT id FROM users WHERE username = ?', (username,)
-    ).fetchone()
-    if already_exists:
+    try:
+        with db.transaction(write=True) as store:
+            if store.get_user_by_username(username) is not None:
+                response.status = 409
+                return {'error': 'Username already exists.'}
+            store.create_user(username, validate.hash_password(password))
+    except database.ConflictError:
         response.status = 409
         return {'error': 'Username already exists.'}
-
-    db.execute(
-        'INSERT INTO users (username, password_hash) VALUES (?, ?)',
-        (username, validate.hash_password(password))
-    )
-    db.commit()
     return {'ok': True}
 
 
 # Log in
 @route('/api/login', method='POST')
 def login():
-    username = request.forms.getunicode('username', '').strip()
+    username = request.forms.getunicode('username', '')
     password = request.forms.getunicode('password', '')
-
-    user = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-    if not user or not validate.check_password(password, user['password_hash']):
-        response.status = 401
-        return {'error': 'Username or password is incorrect.'}
-
-    token = secrets.token_hex(16)
-    db.execute('INSERT INTO sessions (token, user_id) VALUES (?, ?)', (token, user['id']))
-    db.commit()
-    response.set_cookie('token', token)
-    return {'ok': True, 'username': user['username']}
+    result = auth_service.authenticate(username, password)
+    response.set_cookie('token', result['token'])
+    return {'ok': True, 'username': result['user']['username']}
 
 
 # Log out
 @route('/api/logout', method='POST')
 def logout():
-    token = request.get_cookie('token')
-    if token:
-        db.execute('DELETE FROM sessions WHERE token = ?', (token,))
-        db.commit()
+    auth_service.logout(request.get_cookie('token'))
     response.delete_cookie('token')
     return {'ok': True}
 
@@ -97,42 +125,32 @@ def logout():
 # Get the current user
 @route('/api/me')
 def me():
-    user = current_user()
-    if not user:
-        response.status = 401
-        return {'error': 'Not logged in.'}
+    user = require_logged_in()
     return {'username': user['username']}
-
-
-# Count a user's files
-def count_user_files(user_id):
-    row = db.execute('SELECT COUNT(*) AS c FROM files WHERE user_id = ?', (user_id,)).fetchone()
-    return row['c']
 
 
 # Get the upload limits
 @route('/api/limits')
 def get_limits():
-    user = current_user()
-    if not user:
-        response.status = 401
-        return {'error': 'Not logged in.'}
+    user = require_logged_in()
+    with db.transaction() as store:
+        used = store.count_user_files(user['id'])
     return {
         'max_file_mb': LIMITS['max_file_mb'],
         'user_file_limit': LIMITS['user_file_limit'],
-        'used': count_user_files(user['id'])
+        'used': used,
     }
 
 
 # Upload a file
 @route('/api/upload', method='POST')
 def upload():
-    user = current_user()
-    if not user:
-        response.status = 401
-        return {'error': 'Not logged in.'}
+    user = require_logged_in()
 
-    if limits.is_quota_reached(count_user_files(user['id']), LIMITS['user_file_limit']):
+    with db.transaction() as store:
+        used = store.count_user_files(user['id'])
+
+    if limits.is_quota_reached(used, LIMITS['user_file_limit']):
         response.status = 403
         return {'error': 'You have reached your limit of %d files.' % LIMITS['user_file_limit']}
 
@@ -151,97 +169,94 @@ def upload():
         raw_name = raw_name.decode('utf8', 'ignore')
     original_name = os.path.basename(raw_name.replace('\\', os.path.sep))
     stored_name = secrets.token_hex(8) + '_' + upload_file.filename
-    with open(os.path.join(UPLOAD_DIR, stored_name), 'wb') as saved_file:
+    file_path = os.path.join(UPLOAD_DIR, stored_name)
+    category = classify.classify(original_name)
+
+    with open(file_path, 'wb') as saved_file:
         saved_file.write(file_bytes)
 
-    category = classify.classify(original_name)
-    db.execute(
-        'INSERT INTO files (user_id, filename, stored_name, category, size) VALUES (?, ?, ?, ?, ?)',
-        (user['id'], original_name, stored_name, category, len(file_bytes))
-    )
-    db.commit()
+    try:
+        with db.transaction(write=True) as store:
+            store.insert_file_metadata(
+                user['id'], original_name, stored_name, category, len(file_bytes)
+            )
+    except database.StorageError:
+        # Metadata failed: remove the bytes written for this upload only,
+        # then let the plugin answer with 503.
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+        raise
     return {'ok': True, 'category': category}
 
 
 # List a user's files
 @route('/api/files')
 def get_files():
-    user = current_user()
-    if not user:
-        response.status = 401
-        return {'error': 'Not logged in.'}
-    rows = db.execute(
-        'SELECT id, filename, category, size, uploaded_at FROM files '
-        'WHERE user_id = ? ORDER BY uploaded_at DESC',
-        (user['id'],)
-    ).fetchall()
-    return {'files': [dict(row) for row in rows]}
+    user = require_logged_in()
+    with db.transaction() as store:
+        rows = store.list_user_files(user['id'])
+    return {
+        'files': [
+            {
+                'id': row['id'],
+                'filename': row['filename'],
+                'category': row['category'],
+                'size': row['size'],
+                'uploaded_at': row['uploaded_at'],
+            }
+            for row in rows
+        ]
+    }
 
 
 # Download a file
 @route('/api/download/<file_id:int>')
 def download_file(file_id):
-    user = current_user()
-    if not user:
-        response.status = 401
-        return {'error': 'Not logged in.'}
-    file_row = db.execute(
-        'SELECT * FROM files WHERE id = ? AND user_id = ?',
-        (file_id, user['id'])
-    ).fetchone()
-    if not file_row:
-        response.status = 404
-        return {'error': 'File not found.'}
-    return static_file(file_row['stored_name'], root=UPLOAD_DIR, download=file_row['filename'])
+    user = require_logged_in()
+    with db.transaction() as store:
+        file_row = store.get_user_file(file_id, user['id'])
+    if file_row is None:
+        raise database.NotFoundError('File not found.')
+    # The transaction is closed before the file body is streamed.
+    return static_file(
+        file_row['stored_name'], root=UPLOAD_DIR, download=file_row['filename']
+    )
 
 
 # Change a file's category
 @route('/api/files/<file_id:int>/category', method='POST')
 def change_category(file_id):
-    user = current_user()
-    if not user:
-        response.status = 401
-        return {'error': 'Not logged in.'}
+    user = require_logged_in()
 
     new_category = request.forms.getunicode('category', '')
     if new_category not in classify.CATEGORIES:
         response.status = 400
         return {'error': 'Not a valid category.'}
 
-    file_row = db.execute(
-        'SELECT id FROM files WHERE id = ? AND user_id = ?',
-        (file_id, user['id'])
-    ).fetchone()
-    if not file_row:
-        response.status = 404
-        return {'error': 'File not found.'}
-
-    db.execute('UPDATE files SET category = ? WHERE id = ?', (new_category, file_id))
-    db.commit()
-    return {'ok': True, 'category': new_category}
+    with db.transaction(write=True) as store:
+        store.lock_user(user['id'])
+        updated = store.change_file_category(file_id, user['id'], new_category)
+    return {'ok': True, 'category': updated['category']}
 
 
 # Delete a file
 @route('/api/files/<file_id:int>/delete', method='POST')
 def delete_file(file_id):
-    user = current_user()
-    if not user:
-        response.status = 401
-        return {'error': 'Not logged in.'}
+    user = require_logged_in()
 
-    file_row = db.execute(
-        'SELECT * FROM files WHERE id = ? AND user_id = ?',
-        (file_id, user['id'])
-    ).fetchone()
-    if not file_row:
-        response.status = 404
-        return {'error': 'File not found.'}
+    with db.transaction() as store:
+        file_row = store.get_user_file(file_id, user['id'])
+    if file_row is None:
+        raise database.NotFoundError('File not found.')
 
     stored_path = os.path.join(UPLOAD_DIR, file_row['stored_name'])
     if os.path.exists(stored_path):
         os.remove(stored_path)
-    db.execute('DELETE FROM files WHERE id = ?', (file_id,))
-    db.commit()
+
+    with db.transaction(write=True) as store:
+        store.delete_file_metadata(file_id, user['id'])
     return {'ok': True}
 
 
@@ -251,4 +266,11 @@ def serve_static(filename):
 
 
 if __name__ == '__main__':
-    run(host='0.0.0.0', port=80, debug=False)
+    # Prepare the schema before serving requests. A failed preparation
+    # stops the startup with a short message, without driver tracebacks.
+    try:
+        db.initialize_schema()
+    except database.StorageError as error:
+        print('Database initialization failed: %s' % error, file=sys.stderr)
+        sys.exit(1)
+    run(host='0.0.0.0', port=int(os.environ.get('PDM_PORT') or 80), debug=False)

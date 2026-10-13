@@ -1,7 +1,7 @@
 import json
 import os
-import secrets
 import sys
+from urllib.parse import quote
 
 from bottle import (
     HTTPError, HTTPResponse, install, redirect, request, response, route,
@@ -16,10 +16,6 @@ import validate
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
-UPLOAD_DIR = os.environ.get('PDM_UPLOAD_DIR') or os.path.join(BASE_DIR, 'uploads')
-if not os.path.isabs(UPLOAD_DIR):
-    UPLOAD_DIR = os.path.join(BASE_DIR, UPLOAD_DIR)
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 with open(os.path.join(BASE_DIR, 'config.json')) as config_file:
     LIMITS = json.load(config_file)
@@ -147,13 +143,6 @@ def get_limits():
 def upload():
     user = require_logged_in()
 
-    with db.transaction() as store:
-        used = store.count_user_files(user['id'])
-
-    if limits.is_quota_reached(used, LIMITS['user_file_limit']):
-        response.status = 403
-        return {'error': 'You have reached your limit of %d files.' % LIMITS['user_file_limit']}
-
     upload_file = request.files.get('file')
     if not upload_file:
         response.status = 400
@@ -168,26 +157,26 @@ def upload():
     if not isinstance(raw_name, str):
         raw_name = raw_name.decode('utf8', 'ignore')
     original_name = os.path.basename(raw_name.replace('\\', os.path.sep))
-    stored_name = secrets.token_hex(8) + '_' + upload_file.filename
-    file_path = os.path.join(UPLOAD_DIR, stored_name)
+    if not original_name:
+        response.status = 400
+        return {'error': 'No file was sent.'}
     category = classify.classify(original_name)
 
-    with open(file_path, 'wb') as saved_file:
-        saved_file.write(file_bytes)
-
-    try:
-        with db.transaction(write=True) as store:
-            store.insert_file_metadata(
-                user['id'], original_name, stored_name, category, len(file_bytes)
-            )
-    except database.StorageError:
-        # Metadata failed: remove the bytes written for this upload only,
-        # then let the plugin answer with 503.
-        try:
-            os.remove(file_path)
-        except OSError:
-            pass
-        raise
+    # The count check and the insert share one write transaction that
+    # holds the user row lock, so the limit cannot be raced. Metadata
+    # and bytes commit together or not at all.
+    with db.transaction(write=True) as store:
+        if store.lock_user(user['id']) is None:
+            raise auth.NotAuthenticatedError('Not logged in.')
+        if limits.is_quota_reached(
+            store.count_user_files(user['id']), LIMITS['user_file_limit']
+        ):
+            response.status = 403
+            return {
+                'error': 'You have reached your limit of %d files.'
+                % LIMITS['user_file_limit']
+            }
+        store.insert_file(user['id'], original_name, category, file_bytes)
     return {'ok': True, 'category': category}
 
 
@@ -216,13 +205,19 @@ def get_files():
 def download_file(file_id):
     user = require_logged_in()
     with db.transaction() as store:
-        file_row = store.get_user_file(file_id, user['id'])
+        file_row = store.get_user_file_content(file_id, user['id'])
     if file_row is None:
         raise database.NotFoundError('File not found.')
-    # The transaction is closed before the file body is streamed.
-    return static_file(
-        file_row['stored_name'], root=UPLOAD_DIR, download=file_row['filename']
-    )
+    # The transaction is closed before the response body is built.
+    headers = {
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': str(len(file_row['content'])),
+        'Content-Disposition': (
+            'attachment; filename="download"; filename*=UTF-8\'\''
+            + quote(file_row['filename'], safe='')
+        ),
+    }
+    return HTTPResponse(body=file_row['content'], headers=headers)
 
 
 # Change a file's category
@@ -246,17 +241,11 @@ def change_category(file_id):
 def delete_file(file_id):
     user = require_logged_in()
 
-    with db.transaction() as store:
-        file_row = store.get_user_file(file_id, user['id'])
-    if file_row is None:
-        raise database.NotFoundError('File not found.')
-
-    stored_path = os.path.join(UPLOAD_DIR, file_row['stored_name'])
-    if os.path.exists(stored_path):
-        os.remove(stored_path)
-
+    # The lock and the delete share one write transaction, so the row is
+    # removed only for the owner's own file.
     with db.transaction(write=True) as store:
-        store.delete_file_metadata(file_id, user['id'])
+        store.lock_user(user['id'])
+        store.delete_file(file_id, user['id'])
     return {'ok': True}
 
 

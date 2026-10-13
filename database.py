@@ -77,7 +77,6 @@ def _file_dict(row):
         'id': int(row['id']),
         'user_id': int(row['user_id']),
         'filename': row['filename'],
-        'stored_name': row['stored_name'],
         'category': row['category'],
         'size': int(row['size']),
         'uploaded_at': _normalize_time(row['uploaded_at']),
@@ -113,11 +112,11 @@ files_table = sa.Table(
     sa.Column('id', sa.Integer, primary_key=True),
     sa.Column('user_id', sa.Integer, sa.ForeignKey('users.id'), nullable=False),
     sa.Column('filename', sa.Text, nullable=False),
-    sa.Column('stored_name', sa.Text, nullable=False),
     sa.Column('category', sa.Text, nullable=False),
     sa.Column('size', sa.BigInteger, nullable=False),
     sa.Column('uploaded_at', sa.DateTime(timezone=True), nullable=False,
               server_default=sa.text('CURRENT_TIMESTAMP')),
+    sa.Column('content', sa.LargeBinary, nullable=False),
     sa.CheckConstraint(
         "category IN ('document', 'image', 'audio', 'video', 'other')",
         name='files_category_check'),
@@ -141,7 +140,7 @@ USER_SELECT_COLUMNS = (
 )
 FILE_SELECT_COLUMNS = (
     files_table.c.id, files_table.c.user_id, files_table.c.filename,
-    files_table.c.stored_name, files_table.c.category, files_table.c.size,
+    files_table.c.category, files_table.c.size,
     files_table.c.uploaded_at,
 )
 
@@ -329,6 +328,14 @@ class Database:
                 raise StorageError(
                     'The existing pdm.db uses the old A1 layout. '
                     'Please delete pdm.db and start again.'
+                )
+        if 'files' in inspector.get_table_names():
+            columns = {c['name'] for c in inspector.get_columns('files')}
+            if 'content' not in columns or 'stored_name' in columns:
+                raise StorageError(
+                    'The existing files table is not compatible with '
+                    'database file storage. Use an empty database and '
+                    'initialize again.'
                 )
         metadata.create_all(engine)
         with engine.begin() as conn:
@@ -558,17 +565,35 @@ class Store:
         ).mappings().first()
         return _file_dict(row)
 
-    # Transitional method: stores metadata while bytes stay in uploads/.
-    def insert_file_metadata(self, user_id, filename, stored_name, category, size):
+    # Own file metadata plus the raw bytes, read in one query that filters
+    # on id and user_id together. Only downloads use this method.
+    def get_user_file_content(self, file_id, user_id):
+        row = self._execute(
+            sa.select(*FILE_SELECT_COLUMNS, files_table.c.content).where(
+                files_table.c.id == file_id,
+                files_table.c.user_id == user_id,
+            )
+        ).mappings().first()
+        if row is None:
+            return None
+        file_row = _file_dict(row)
+        file_row['content'] = bytes(row['content'])
+        return file_row
+
+    # Store metadata and the raw bytes in one INSERT. The size is derived
+    # from the content itself, so the two can never disagree.
+    def insert_file(self, user_id, filename, category, content):
         self._require_write()
+        if not isinstance(filename, str) or not filename:
+            raise ValueError('filename must be a non-empty string.')
         if category not in classify.CATEGORIES:
             raise ValueError('Not a valid category.')
-        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
-            raise ValueError('size must be a non-negative integer.')
+        if not isinstance(content, bytes):
+            raise ValueError('content must be bytes.')
         result = self._execute(
             files_table.insert().values(
-                user_id=user_id, filename=filename, stored_name=stored_name,
-                category=category, size=size,
+                user_id=user_id, filename=filename, category=category,
+                size=len(content), content=content,
             )
         )
         return self.get_user_file(result.inserted_primary_key[0], user_id)
@@ -587,16 +612,17 @@ class Store:
         )
         return self.get_user_file(file_id, user_id)
 
-    # Delete the user's own file metadata. Bytes are not touched here.
-    def delete_file_metadata(self, file_id, user_id):
+    # Delete the user's own file row; metadata and content go together.
+    # A zero rowcount means the file is missing or belongs to another user.
+    def delete_file(self, file_id, user_id):
         self._require_write()
-        if self.get_user_file(file_id, user_id) is None:
-            raise NotFoundError('File not found.')
-        self._execute(
+        result = self._execute(
             files_table.delete().where(
                 files_table.c.id == file_id, files_table.c.user_id == user_id
             )
         )
+        if result.rowcount == 0:
+            raise NotFoundError('File not found.')
 
     # Lock the single system_state row. The row must already exist; it is
     # never recreated on demand inside a request.

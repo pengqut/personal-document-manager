@@ -141,12 +141,10 @@ class FileStoreTests(SQLiteComponentTests):
         with self.db.transaction(write=True) as store:
             return store.create_user(username, validate.hash_password('Abcdefg1'))
 
-    def insert(self, user_id, filename, category='document'):
+    def insert(self, user_id, filename, category='document', content=b'file-bytes'):
         with self.db.transaction(write=True) as store:
             store.lock_user(user_id)
-            return store.insert_file_metadata(
-                user_id, filename, 'x_' + filename, category, 10
-            )
+            return store.insert_file(user_id, filename, category, content)
 
     # Metadata of one user is invisible to another user, who also cannot
     # change or delete it.
@@ -168,7 +166,66 @@ class FileStoreTests(SQLiteComponentTests):
                     alice_files[0]['id'], bob['id'], 'image'
                 )
             with self.assertRaises(database.NotFoundError):
-                store.delete_file_metadata(alice_files[0]['id'], bob['id'])
+                store.delete_file(alice_files[0]['id'], bob['id'])
+
+    # Bytes survive a round trip unchanged, including zero-byte files,
+    # and the list view never loads the content column.
+    def test_content_roundtrip_and_zero_byte_file(self):
+        user = self.create_user('alice123')
+        payload = bytes(range(256))
+        meta = self.insert(user['id'], 'a.bin', 'other', payload)
+        self.assertEqual(meta['size'], len(payload))
+
+        with self.db.transaction() as store:
+            stored = store.get_user_file_content(meta['id'], user['id'])
+            listing = store.list_user_files(user['id'])
+        self.assertEqual(stored['content'], payload)
+        self.assertEqual(stored['size'], len(payload))
+        self.assertEqual(len(listing), 1)
+        self.assertNotIn('content', listing[0])
+        self.assertNotIn('stored_name', listing[0])
+
+        # Zero-byte files are valid uploads.
+        empty = self.insert(user['id'], 'empty.txt', 'document', b'')
+        self.assertEqual(empty['size'], 0)
+        with self.db.transaction() as store:
+            stored_empty = store.get_user_file_content(empty['id'], user['id'])
+        self.assertEqual(stored_empty['content'], b'')
+
+    # Another user can neither read the bytes nor delete the file; the
+    # owner's delete removes metadata and content in the same row.
+    def test_ownership_and_delete(self):
+        alice = self.create_user('alice123')
+        bob = self.create_user('bobuser1')
+        meta = self.insert(alice['id'], 'a.pdf', 'document', b'abc')
+
+        with self.db.transaction() as store:
+            self.assertIsNone(store.get_user_file_content(meta['id'], bob['id']))
+        with self.db.transaction(write=True) as store:
+            store.lock_user(bob['id'])
+            with self.assertRaises(database.NotFoundError):
+                store.delete_file(meta['id'], bob['id'])
+        with self.db.transaction() as store:
+            self.assertEqual(store.count_user_files(alice['id']), 1)
+
+        with self.db.transaction(write=True) as store:
+            store.lock_user(alice['id'])
+            store.delete_file(meta['id'], alice['id'])
+        with self.db.transaction() as store:
+            self.assertIsNone(store.get_user_file(meta['id'], alice['id']))
+            self.assertIsNone(store.get_user_file_content(meta['id'], alice['id']))
+            self.assertEqual(store.count_user_files(alice['id']), 0)
+
+    # A failed transaction rolls the inserted file row back completely.
+    def test_insert_file_rolls_back_with_transaction(self):
+        alice = self.create_user('alice123')
+        with self.assertRaises(ValueError):
+            with self.db.transaction(write=True) as store:
+                store.lock_user(alice['id'])
+                store.insert_file(alice['id'], 'a.pdf', 'document', b'abc')
+                raise ValueError('boom')
+        with self.db.transaction() as store:
+            self.assertEqual(store.count_user_files(alice['id']), 0)
 
 
 class AtomicityTests(SQLiteComponentTests):
@@ -251,9 +308,7 @@ class StoreEngineTests(unittest.TestCase):
         self.assertIsInstance(alice['enabled'], bool)
         with self.db.transaction(write=True) as store:
             store.lock_user(alice['id'])
-            meta = store.insert_file_metadata(
-                alice['id'], 'a.pdf', 'x_a.pdf', 'document', 10
-            )
+            meta = store.insert_file(alice['id'], 'a.pdf', 'document', b'pdf-bytes')
         self.assertIsInstance(meta['uploaded_at'], str)
         self.assertEqual(len(meta['uploaded_at']), 19)
         self.assertEqual(meta['uploaded_at'][4], '-')

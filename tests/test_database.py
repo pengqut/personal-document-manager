@@ -5,7 +5,7 @@ import threading
 import time
 import unittest
 import sqlalchemy as sa
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import urlsplit
 
 import database
@@ -41,6 +41,37 @@ class SchemaTests(SQLiteComponentTests):
         names = self.table_names(self.path)
         for table in ('users', 'sessions', 'files', 'system_state'):
             self.assertIn(table, names)
+
+
+class PostgreSQLInitializationTests(unittest.TestCase):
+
+    def setUp(self):
+        self.db = database.Database.from_url(
+            'postgresql://testuser@localhost/pdm_dev'
+        )
+
+    def test_existing_database_needs_no_creation(self):
+        with patch.object(self.db, '_get_engine'), \
+                patch.object(self.db, '_create_schema') as schema, \
+                patch('database.sa.create_engine') as create:
+            self.db.initialize_schema()
+        create.assert_not_called()
+        schema.assert_called_once_with()
+
+    def test_missing_database_is_created(self):
+        from sqlalchemy.dialects.postgresql import dialect
+        maintenance = MagicMock()
+        maintenance.dialect = dialect()
+        conn = maintenance.connect.return_value.__enter__.return_value
+        conn.execute.return_value.scalar.return_value = None
+        error = sa.exc.OperationalError(None, None, Exception('missing database'))
+        with patch.object(self.db, '_get_engine') as target, \
+                patch.object(self.db, '_create_schema') as schema, \
+                patch('database.sa.create_engine', return_value=maintenance):
+            target.return_value.connect.side_effect = error
+            self.db.initialize_schema()
+        conn.exec_driver_sql.assert_called_once_with('CREATE DATABASE "pdm_dev"')
+        schema.assert_called_once_with()
 
 
 class UserStoreTests(SQLiteComponentTests):

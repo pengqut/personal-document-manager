@@ -8,6 +8,7 @@ from bottle import (
     run, static_file,
 )
 
+import admin_setup
 import auth
 import classify
 import database
@@ -23,6 +24,7 @@ with open(os.path.join(BASE_DIR, 'config.json')) as config_file:
 # Configuration only; connections are opened per transaction.
 db = database.Database.from_environment(BASE_DIR)
 auth_service = auth.AuthService(db)
+admin_setup_service = admin_setup.AdminSetupFacade(db)
 
 
 # Wrap every route and map exceptions to uniform JSON responses, so the
@@ -31,6 +33,19 @@ auth_service = auth.AuthService(db)
 def error_plugin(callback):
     def wrapper(*args, **kwargs):
         try:
+            path = request.path
+            setup_paths = ('/api/admin/setup', '/api/admin/setup-status')
+            is_api = path.startswith('/api/')
+            is_asset = path != '/' and not path.lower().endswith('.html') and '.' in path.rsplit('/', 1)[-1]
+            if path != '/admin-setup.html' and path not in setup_paths and (is_api or not is_asset):
+                if not admin_setup_service.get_status()['initialized']:
+                    if is_api:
+                        response.status = 409
+                        return {'error': 'Administrator setup is required.'}
+                    redirect('/admin-setup.html')
+            admin_public_paths = setup_paths + ('/api/admin/login',)
+            if path.startswith('/api/admin/') and path not in admin_public_paths:
+                auth.require_admin(current_user())
             return callback(*args, **kwargs)
         except (HTTPResponse, HTTPError):
             raise
@@ -43,6 +58,12 @@ def error_plugin(callback):
         except auth.PermissionDeniedError:
             response.status = 403
             return {'error': 'Administrator rights are required.'}
+        except admin_setup.SetupValidationError as error:
+            response.status = 400
+            return {'error': str(error)}
+        except admin_setup.SetupClosedError:
+            response.status = 409
+            return {'error': 'Administrator setup is already complete.'}
         except database.NotFoundError:
             response.status = 404
             return {'error': 'File not found.'}
@@ -100,21 +121,58 @@ def register():
     return {'ok': True}
 
 
+# Show whether the one-time administrator setup is still open
+@route('/api/admin/setup-status')
+def admin_setup_status():
+    return admin_setup_service.get_status()
+
+
+# Create the first administrator account once
+@route('/api/admin/setup', method='POST')
+def admin_setup_submit():
+    username = request.forms.getunicode('username', '')
+    password = request.forms.getunicode('password', '')
+    try:
+        return admin_setup_service.setup_admin(username, password)
+    except database.ConflictError:
+        # Caught after the failed transaction rolled back, so the
+        # response is built outside it.
+        response.status = 409
+        return {'error': 'Username already exists.'}
+
+
 # Log in
 @route('/api/login', method='POST')
 def login():
     username = request.forms.getunicode('username', '')
     password = request.forms.getunicode('password', '')
-    result = auth_service.authenticate(username, password)
-    response.set_cookie('token', result['token'])
+    result = auth_service.authenticate(username, password, expected_role='user')
+    response.set_cookie('token', result['token'], path='/')
     return {'ok': True, 'username': result['user']['username']}
+
+
+# Administrator login is separate from ordinary user login.
+@route('/api/admin/login', method='POST')
+def admin_login():
+    username = request.forms.getunicode('username', '')
+    password = request.forms.getunicode('password', '')
+    result = auth_service.authenticate(username, password, expected_role='admin')
+    response.set_cookie('token', result['token'], path='/')
+    return {'ok': True, 'username': result['user']['username']}
+
+
+# The plugin checks administrator permission for this and other admin APIs.
+@route('/api/admin/me')
+def admin_me():
+    user = auth.require_admin(current_user())
+    return {'username': user['username'], 'role': user['role']}
 
 
 # Log out
 @route('/api/logout', method='POST')
 def logout():
     auth_service.logout(request.get_cookie('token'))
-    response.delete_cookie('token')
+    response.delete_cookie('token', path='/')
     return {'ok': True}
 
 
@@ -251,6 +309,11 @@ def delete_file(file_id):
 
 @route('/<filename:path>')
 def serve_static(filename):
+    if os.path.normpath(filename) == 'admin.html':
+        user = current_user()
+        if user is None:
+            redirect('/admin-login.html')
+        auth.require_admin(user)
     return static_file(filename, root=STATIC_DIR)
 
 

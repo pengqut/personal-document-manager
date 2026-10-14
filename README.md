@@ -108,6 +108,29 @@ Replace `DB_PRIVATE_IP`, `APP1_PRIVATE_IP`, `APP2_PRIVATE_IP` and `DB_PASSWORD` 
 
    URL-encode special characters in the password. Start the first instance and wait for initialization to finish before starting the second. The application creates `pdm_prod` and its tables automatically. Verify upload/download through the ALB address.
 
+## Administrator Setup and Login
+
+1. **Initialize:** open [http://localhost:8080](http://localhost:8080). Until an administrator has a saved password, application pages redirect to `/admin-setup.html`. Enter the administrator username and password.
+2. **Administrator login:** manually open [http://localhost:8080/admin-login.html](http://localhost:8080/admin-login.html) and use the administrator credentials. Successful login opens `/admin.html`.
+3. **Ordinary user login:** open [http://localhost:8080/login.html](http://localhost:8080/login.html). This entry accepts ordinary users only.
+
+### Reset Administrator Setup
+
+1. **Stop the application** 
+
+2. **Connect to the application database:**
+
+3. **Clear the administrator password and sessions** 
+
+   ```sql
+   BEGIN;
+   DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE role = 'admin');
+   UPDATE users SET password_hash = '' WHERE role = 'admin';
+   COMMIT;
+   ```
+
+4. **Restart and open the application.**
+
 ## Testing
 
 Each developer is responsible for creating and maintaining software tests for the feature they develop.

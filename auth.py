@@ -46,7 +46,7 @@ class AuthService:
 
     # Verify credentials and create a session in one write transaction.
     # Every failure raises AuthenticationError with the same public message.
-    def authenticate(self, username, password):
+    def authenticate(self, username, password, expected_role=None):
         username = (username or '').strip()
         if not username or not password:
             raise AuthenticationError('Username or password is incorrect.')
@@ -58,6 +58,8 @@ class AuthService:
             if locked is None:
                 # The account vanished between lookup and lock.
                 raise AuthenticationError('Username or password is incorrect.')
+            if not locked['password_hash']:
+                raise AuthenticationError('Username or password is incorrect.')
             try:
                 password_ok = validate.check_password(
                     password, locked['password_hash']
@@ -66,7 +68,8 @@ class AuthService:
                 raise database.StorageError(
                     'Stored password hash format is invalid.'
                 ) from exc
-            if not password_ok or not locked['enabled']:
+            if (not password_ok or not locked['enabled']
+                    or (expected_role is not None and locked['role'] != expected_role)):
                 raise AuthenticationError('Username or password is incorrect.')
             token = secrets.token_hex(16)
             store.create_session(token, locked['id'])

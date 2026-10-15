@@ -2,13 +2,15 @@ import re
 import hashlib
 import secrets
 
-USERNAME_PATTERN = re.compile(r'^[A-Za-z0-9_]{6,10}$')
+USERNAME_PATTERN = re.compile(r'^[A-Za-z0-9_]+$')
 
 
 # Validate a username
-def validate_username(username):
-    if not USERNAME_PATTERN.fullmatch(username or ''):
-        return 'Username must be 6 to 10 characters. Only letters, numbers and underscore are allowed.'
+def validate_username(username, min_length=6):
+    username = username or ''
+    if not min_length <= len(username) <= 10 or not USERNAME_PATTERN.fullmatch(username):
+        return (f'Username must be {min_length} to 10 characters. '
+                'Only letters, numbers and underscore are allowed.')
     return None
 
 

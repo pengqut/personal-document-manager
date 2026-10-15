@@ -474,6 +474,27 @@ class Store:
         )
         return self.get_user_by_id(result.inserted_primary_key[0])
 
+    # Prefer an administrator with a password; otherwise return the
+    # existing reset account so setup can reuse it instead of adding one.
+    def get_admin(self):
+        row = self._execute(
+            self._user_select().where(users_table.c.role == 'admin')
+            .order_by((users_table.c.password_hash != '').desc(), users_table.c.id)
+        ).mappings().first()
+        return _user_dict(row)
+
+    # Restore the reset administrator while holding the setup state lock.
+    def restore_admin(self, user_id, username, password_hash):
+        self._require_write()
+        if not self._locked_system_state:
+            raise RuntimeError('restore_admin needs lock_system_state first.')
+        self._execute(
+            users_table.update()
+            .where(users_table.c.id == user_id, users_table.c.role == 'admin')
+            .values(username=username, password_hash=password_hash, enabled=True)
+        )
+        self._execute(sessions_table.delete().where(sessions_table.c.user_id == user_id))
+
     # Ordinary users with their file counts, ordered by id, zero files kept.
     def list_normal_users(self):
         rows = self._execute(
@@ -673,6 +694,18 @@ class Store:
         )
         if result.rowcount == 0:
             raise NotFoundError('File not found.')
+
+    # Read the fixed system_state row without locking or changing it. The
+    # row must already exist; it is never recreated on demand.
+    def get_system_state(self):
+        row = self._execute(
+            sa.select(
+                system_state_table.c.id, system_state_table.c.admin_initialized
+            ).where(system_state_table.c.id == 1)
+        ).mappings().first()
+        if row is None:
+            raise StorageError('The system_state row is missing.')
+        return {'id': 1, 'admin_initialized': bool(row['admin_initialized'])}
 
     # Lock the single system_state row. The row must already exist; it is
     # never recreated on demand inside a request.

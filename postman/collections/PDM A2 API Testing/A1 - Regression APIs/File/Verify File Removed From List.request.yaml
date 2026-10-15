@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{base_url}}/api/files"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      let deletedFile = response.files.find(\r
+
+      \    file => file.id == pm.environment.get(\"test_file_id\")\r
+
+      );\r
+
+      \r
+
+      pm.test(\"Deleted file is not in file list\", function () {\r
+
+      \    pm.expect(deletedFile).to.not.exist;\r
+
+      });"
+    language: text/javascript
+order: 9000

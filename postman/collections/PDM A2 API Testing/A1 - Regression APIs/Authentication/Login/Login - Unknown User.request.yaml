@@ -1,0 +1,41 @@
+$kind: http-request
+url: "{{base_url}}/api/login"
+method: POST
+body:
+  type: urlencoded
+  content:
+    username: A2Test01non
+    password: Testpassword123
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 401\", function () {\r
+
+      \    pm.response.to.have.status(401);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Content-Type is present\", function () {\r
+
+      \    pm.response.to.have.header(\"Content-Type\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Unknown user is rejected\", function () {\r
+
+      \    pm.expect(response.error).to.eql(\r
+
+      \        \"Username or password is incorrect.\"\r
+
+      \    );\r
+
+      });"
+    language: text/javascript
+order: 2000

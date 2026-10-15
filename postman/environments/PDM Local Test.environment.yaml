@@ -1,0 +1,4 @@
+name: PDM Local Test
+values:
+  - key: base_url
+    value: ''

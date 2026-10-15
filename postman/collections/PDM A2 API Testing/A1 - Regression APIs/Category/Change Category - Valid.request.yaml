@@ -1,0 +1,37 @@
+$kind: http-request
+name: Change Category - Valid
+url: "{{base_url}}/api/files/{{test_file_id}}/category"
+method: POST
+body:
+  type: urlencoded
+  content:
+    category: image
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Category update is successful\", function () {\r
+
+      \    pm.expect(response.ok).to.eql(true);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Category is updated to image\", function () {\r
+
+      \    pm.expect(response.category).to.eql(\"image\");\r
+
+      });"
+    language: text/javascript
+order: 1000

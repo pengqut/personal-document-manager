@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{base_url}}/api/register"
+method: POST
+body:
+  type: urlencoded
+  content:
+    username: A2Test02
+    password: Testpassowrd123
+order: 1000

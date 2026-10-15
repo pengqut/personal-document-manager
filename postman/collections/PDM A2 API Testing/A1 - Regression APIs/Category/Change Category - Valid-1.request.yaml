@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{base_url}}/api/files/{{test_file_id}}/category"
+method: POST
+body:
+  type: urlencoded
+  content:
+    category: random
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 400\", function () {\r
+
+      \    pm.response.to.have.status(400);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Invalid category is rejected\", function () {\r
+
+      \    pm.expect(response.error).to.eql(\"Not a valid category.\");\r
+
+      });"
+    language: text/javascript
+order: 2000

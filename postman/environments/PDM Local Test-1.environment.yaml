@@ -1,0 +1,10 @@
+name: PDM Local Test
+values:
+  - key: base_url
+    value: ''
+  - key: Loginusername
+    value: ''
+  - key: Loginpassword
+    value: ''
+  - key: test_file_id
+    value: ''

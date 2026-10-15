@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{base_url}}/api/files"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 401\", function () {\r
+
+      \    pm.response.to.have.status(401);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Unauthenticated request is rejected\", function () {\r
+
+      \    pm.expect(response.error).to.eql(\"Not logged in.\");\r
+
+      });"
+    language: text/javascript
+order: 3000

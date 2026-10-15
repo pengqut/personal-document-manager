@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{base_url}}/api/upload"
+method: POST
+body:
+  type: formdata
+  content: []
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 400\", function () {\r
+
+      \    pm.response.to.have.status(400);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Missing file is rejected\", function () {\r
+
+      \    pm.expect(response.error).to.eql(\"No file was sent.\");\r
+
+      });"
+    language: text/javascript
+order: 1000

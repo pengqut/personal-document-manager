@@ -1,0 +1,48 @@
+$kind: http-request
+url: "{{base_url}}/api/limits"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Content-Type is present\", function () {\r
+
+      \    pm.response.to.have.header(\"Content-Type\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"File size limit is 500 MB\", function () {\r
+
+      \    pm.expect(response.max_file_mb).to.eql(500);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"File count limit is 100\", function () {\r
+
+      \    pm.expect(response.user_file_limit).to.eql(100);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Current usage is returned\", function () {\r
+
+      \    pm.expect(response).to.have.property(\"used\");\r
+
+      });"
+    language: text/javascript
+order: 1000

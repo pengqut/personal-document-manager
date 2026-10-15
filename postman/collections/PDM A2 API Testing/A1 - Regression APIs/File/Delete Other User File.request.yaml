@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{base_url}}/api/files/{{test_file_id}}/delete"
+method: POST
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 404\", function () {\r
+
+      \    pm.response.to.have.status(404);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Other user's file cannot be deleted\", function () {\r
+
+      \    pm.expect(response.error).to.eql(\"File not found.\");\r
+
+      });"
+    language: text/javascript
+order: 6000

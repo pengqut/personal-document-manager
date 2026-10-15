@@ -1,0 +1,61 @@
+$kind: http-request
+name: List Files - Authenticated
+url: "{{base_url}}/api/files"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Content-Type is present\", function () {\r
+
+      \    pm.response.to.have.header(\"Content-Type\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Files list is returned\", function () {\r
+
+      \    pm.expect(response.files).to.be.an(\"array\");\r
+
+      });\r
+
+      \r
+
+      // Find the file uploaded earlier\r
+
+      let testFile = response.files.find(\r
+
+      \    file => file.filename === \"api_test.txt\"\r
+
+      );\r
+
+      \r
+
+      pm.test(\"Uploaded test file is listed\", function () {\r
+
+      \    pm.expect(testFile).to.exist;\r
+
+      });\r
+
+      \r
+
+      // Save its ID for later requests\r
+
+      if (testFile) {\r
+
+      \    pm.environment.set(\"test_file_id\", testFile.id);\r
+
+      }"
+    language: text/javascript
+order: 4000

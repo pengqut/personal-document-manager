@@ -1,0 +1,49 @@
+$kind: http-request
+url: "{{base_url}}/api/upload"
+method: POST
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src:
+        - /F:/QUT study/2026 Semester 2/IFN636/api_test.txt
+      description: ""
+      disabled: false
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Content-Type is present\", function () {\r
+
+      \    pm.response.to.have.header(\"Content-Type\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Upload is successful\", function () {\r
+
+      \    pm.expect(response.ok).to.eql(true);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"File is classified as document\", function () {\r
+
+      \    pm.expect(response.category).to.eql(\"document\");\r
+
+      });"
+    language: text/javascript
+order: 2000

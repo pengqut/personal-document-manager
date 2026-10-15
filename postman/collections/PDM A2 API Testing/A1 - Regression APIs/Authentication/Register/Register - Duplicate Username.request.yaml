@@ -1,0 +1,37 @@
+$kind: http-request
+url: "{{base_url}}/api/register"
+method: POST
+body:
+  type: urlencoded
+  content:
+    username: A2Test01
+    password: Testpassword123
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 409\", function () {\r
+
+      \    pm.response.to.have.status(409);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Content-Type is present\", function () {\r
+
+      \    pm.response.to.have.header(\"Content-Type\");\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Duplicate username is rejected\", function () {\r
+
+      \    pm.expect(response.error).to.eql(\"Username already exists.\");\r
+
+      });"
+    language: text/javascript
+order: 3000

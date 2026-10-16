@@ -2,3 +2,9 @@ name: PDM Local Test
 values:
   - key: base_url
     value: ''
+  - key: admin_token
+    value: ''
+  - key: user_token
+    value: ''
+  - key: user_id
+    value: ''

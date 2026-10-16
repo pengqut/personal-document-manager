@@ -168,6 +168,14 @@ def admin_me():
     return {'username': user['username'], 'role': user['role']}
 
 
+# List normal users for administrators
+@route('/api/admin/users')
+def admin_users():
+    with db.transaction() as store:
+        users = store.list_normal_users()
+    return {'users': users}
+
+
 # Log out
 @route('/api/logout', method='POST')
 def logout():

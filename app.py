@@ -13,6 +13,7 @@ import auth
 import classify
 import database
 import limits
+import quota
 import validate
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +62,15 @@ def error_plugin(callback):
         except admin_setup.SetupValidationError as error:
             response.status = 400
             return {'error': str(error)}
+        except quota.QuotaValidationError as error:
+            response.status = 400
+            return {'error': str(error)}
+        except quota.QuotaTargetError as error:
+            response.status = 400
+            return {'error': str(error)}
+        except quota.UserNotFoundError:
+            response.status = 404
+            return {'error': 'User not found.'}
         except admin_setup.SetupClosedError:
             response.status = 409
             return {'error': 'Administrator setup is already complete.'}
@@ -202,6 +212,15 @@ def admin_user_status(user_id):
         'ok': True,
         'enabled': updated['enabled']
     }
+
+
+# Set the file quota of a normal user.
+@route('/api/admin/users/<user_id:int>/quota', method='POST')
+def admin_user_quota(user_id):
+    raw_quota = request.forms.getunicode('file_quota', '')
+    command = quota.SetFileQuota(db, user_id, raw_quota)
+    return command.execute()
+
 
 # Log out
 @route('/api/logout', method='POST')

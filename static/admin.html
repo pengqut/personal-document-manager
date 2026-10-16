@@ -59,6 +59,22 @@ async function loadUsers() {
             });
 
             actionCell.appendChild(button);
+
+            const quotaInput = document.createElement('input');
+            quotaInput.type = 'number';
+            quotaInput.min = '0';
+            quotaInput.step = '1';
+            quotaInput.value = user.file_quota;
+
+            const quotaButton = document.createElement('button');
+            quotaButton.type = 'button';
+            quotaButton.textContent = 'Set quota';
+            quotaButton.addEventListener('click', function () {
+                setQuota(user.id, quotaInput.value);
+            });
+
+            actionCell.appendChild(quotaInput);
+            actionCell.appendChild(quotaButton);
             row.appendChild(actionCell);
             usersBody.appendChild(row);
         });
@@ -93,6 +109,32 @@ async function loadUsers() {
 
         } catch (error) {
             usersMessage.textContent = 'Unable to update user status.';
+        }
+    }
+
+    async function setQuota(userId, fileQuota) {
+        try {
+            const body = new URLSearchParams();
+            body.append('file_quota', fileQuota);
+
+            const res = await fetch('/api/admin/users/' + userId + '/quota', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: body
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                usersMessage.textContent = data.error || 'Unable to update the file quota.';
+                return;
+            }
+
+            usersMessage.textContent = 'File quota updated to ' + data.file_quota + '.';
+            loadUsers();
+        } catch (error) {
+            usersMessage.textContent = 'Unable to update the file quota.';
         }
     }
 (async function () {

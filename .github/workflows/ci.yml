@@ -1,13 +1,15 @@
-name: Python Tests
+name: PC EC2 CD Experiment
 
 on:
   push:
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+    branches: [ci/pc-ec2-deploy]
 
 permissions:
   contents: read
+
+concurrency:
+  group: pc-ec2-cd-experiment
+  cancel-in-progress: false
 
 jobs:
   test:
@@ -36,3 +38,26 @@ jobs:
       # PostgreSQL row-lock tests are skipped without a dedicated test database.
       - name: Run tests
         run: python -m pytest -q -p no:cacheprovider
+
+  deploy:
+    name: Deploy / ${{ matrix.runner }}
+    needs: test
+    if: github.repository == 'pengqut/personal-document-manager' && github.event_name == 'push' && github.ref == 'refs/heads/ci/pc-ec2-deploy'
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        runner: [pc-cd-app1, pc-cd-app2]
+    runs-on: [self-hosted, linux, x64, "${{ matrix.runner }}"]
+    timeout-minutes: 10
+    steps:
+      - name: Check out the tested commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Deploy and verify the application
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        run: bash .github/scripts/deploy-pc.sh

@@ -166,15 +166,42 @@ def admin_login():
 def admin_me():
     user = auth.require_admin(current_user())
     return {'username': user['username'], 'role': user['role']}
-
-
-# List normal users for administrators
+    
+# Return the list of normal users for admin management.
 @route('/api/admin/users')
 def admin_users():
     with db.transaction() as store:
         users = store.list_normal_users()
     return {'users': users}
 
+# Enable or disable a normal user.
+@route('/api/admin/users/<user_id:int>/status', method='POST')
+def admin_user_status(user_id):
+    enabled_value = request.forms.getunicode('enabled', '').strip().lower()
+
+    if enabled_value not in ('true', 'false'):
+        response.status = 400
+        return {'error': 'Invalid enabled value.'}
+
+    enabled = enabled_value == 'true'
+
+    with db.transaction(write=True) as store:
+        user = store.lock_user(user_id)
+
+        if user is None:
+            response.status = 404
+            return {'error': 'User not found.'}
+
+        if user['role'] == 'admin':
+            response.status = 400
+            return {'error': 'Administrator accounts cannot be changed.'}
+
+        updated = store.set_user_enabled(user_id, enabled)
+
+    return {
+        'ok': True,
+        'enabled': updated['enabled']
+    }
 
 # Log out
 @route('/api/logout', method='POST')

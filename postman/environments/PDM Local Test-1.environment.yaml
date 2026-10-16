@@ -8,3 +8,9 @@ values:
     value: ''
   - key: test_file_id
     value: ''
+  - key: admin_token
+    value: ''
+  - key: user_token
+    value: ''
+  - key: user_id
+    value: ''

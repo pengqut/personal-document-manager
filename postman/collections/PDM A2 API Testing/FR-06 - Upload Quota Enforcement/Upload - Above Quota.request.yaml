@@ -1,4 +1,24 @@
 $kind: http-request
-url: ""
-method: GET
+url: "{{base_url}}/api/upload"
+method: POST
+headers:
+  - key: Cookie
+    value: token={{user_token}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src:
+        - postman/fixtures/quota_sample.txt
+      description: "Quota was lowered below the current file count."
+      disabled: false
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Status code is 403\", function () {\r
+
+      \    pm.response.to.have.status(403);\r
+
+      });"
+    language: text/javascript
 order: 3000

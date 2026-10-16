@@ -1,4 +1,36 @@
 $kind: http-request
-url: ""
-method: GET
+url: "{{base_url}}/api/admin/users/{{user_id}}/quota"
+method: POST
+headers:
+  - key: Cookie
+    value: token={{admin_token}}
+body:
+  type: urlencoded
+  content:
+    - key: file_quota
+      value: "1"
+      description: "User already has more than one file."
+      disabled: false
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Quota can sit below the current file count\", function () {\r
+
+      \    pm.expect(response.file_quota).to.eql(1);\r
+
+      \    pm.expect(response.file_count).to.be.above(1);\r
+
+      });"
+    language: text/javascript
 order: 3000

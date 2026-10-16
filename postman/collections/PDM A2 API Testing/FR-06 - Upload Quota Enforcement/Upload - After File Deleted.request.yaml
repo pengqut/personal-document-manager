@@ -1,4 +1,36 @@
 $kind: http-request
-url: ""
-method: GET
+url: "{{base_url}}/api/upload"
+method: POST
+headers:
+  - key: Cookie
+    value: token={{user_token}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src:
+        - postman/fixtures/quota_sample.txt
+      description: "A file was deleted so the count is under the quota again."
+      disabled: false
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Upload is successful\", function () {\r
+
+      \    pm.expect(response.ok).to.eql(true);\r
+
+      });"
+    language: text/javascript
 order: 5000

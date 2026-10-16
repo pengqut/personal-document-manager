@@ -13,6 +13,7 @@ import auth
 import classify
 import database
 import limits
+import quota
 import validate
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +62,15 @@ def error_plugin(callback):
         except admin_setup.SetupValidationError as error:
             response.status = 400
             return {'error': str(error)}
+        except quota.QuotaValidationError as error:
+            response.status = 400
+            return {'error': str(error)}
+        except quota.QuotaTargetError as error:
+            response.status = 400
+            return {'error': str(error)}
+        except quota.UserNotFoundError:
+            response.status = 404
+            return {'error': 'User not found.'}
         except admin_setup.SetupClosedError:
             response.status = 409
             return {'error': 'Administrator setup is already complete.'}
@@ -203,6 +213,15 @@ def admin_user_status(user_id):
         'enabled': updated['enabled']
     }
 
+
+# Set the file quota of a normal user.
+@route('/api/admin/users/<user_id:int>/quota', method='POST')
+def admin_user_quota(user_id):
+    raw_quota = request.forms.getunicode('file_quota', '')
+    command = quota.SetFileQuota(db, user_id, raw_quota)
+    return command.execute()
+
+
 # Log out
 @route('/api/logout', method='POST')
 def logout():
@@ -223,10 +242,11 @@ def me():
 def get_limits():
     user = require_logged_in()
     with db.transaction() as store:
+        fresh = store.get_user_by_id(user['id'])
         used = store.count_user_files(user['id'])
     return {
         'max_file_mb': LIMITS['max_file_mb'],
-        'user_file_limit': LIMITS['user_file_limit'],
+        'user_file_limit': fresh['file_quota'],
         'used': used,
     }
 
@@ -259,16 +279,13 @@ def upload():
     # holds the user row lock, so the limit cannot be raced. Metadata
     # and bytes commit together or not at all.
     with db.transaction(write=True) as store:
-        if store.lock_user(user['id']) is None:
+        locked = store.lock_user(user['id'])
+        if locked is None:
             raise auth.NotAuthenticatedError('Not logged in.')
-        if limits.is_quota_reached(
-            store.count_user_files(user['id']), LIMITS['user_file_limit']
-        ):
+        file_quota = locked['file_quota']
+        if quota.upload_blocked(store.count_user_files(user['id']), file_quota):
             response.status = 403
-            return {
-                'error': 'You have reached your limit of %d files.'
-                % LIMITS['user_file_limit']
-            }
+            return {'error': quota.limit_message(file_quota)}
         store.insert_file(user['id'], original_name, category, file_bytes)
     return {'ok': True, 'category': category}
 

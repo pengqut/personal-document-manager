@@ -1,4 +1,36 @@
 $kind: http-request
-url: ""
-method: GET
+url: "{{base_url}}/api/upload"
+method: POST
+headers:
+  - key: Cookie
+    value: token={{user_token}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src:
+        - postman/fixtures/quota_sample.txt
+      description: "User file count already equals the quota."
+      disabled: false
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 403\", function () {\r
+
+      \    pm.response.to.have.status(403);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Quota message is returned\", function () {\r
+
+      \    pm.expect(response.error).to.include(\"limit of\");\r
+
+      });"
+    language: text/javascript
 order: 2000

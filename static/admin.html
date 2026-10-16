@@ -16,7 +16,7 @@
     <section class="mt-4">
         <h2>Normal Users</h2>
         <table class="table table-bordered">
-            <thead><tr><th>Username</th><th>Status</th><th>File Quota</th><th>File Count</th></tr></thead>
+            <thead><tr><th>Username</th><th>Status</th><th>File Quota</th><th>File Count</th><th>Action</th></tr></thead>
             <tbody id="users-body"></tbody>
         </table>
         <p id="users-message"></p>
@@ -48,12 +48,53 @@ async function loadUsers() {
                 cell.textContent = value;
                 row.appendChild(cell);
             });
+            const actionCell = document.createElement('td');
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = user.enabled ? 'Disable' : 'Enable';
+
+            button.addEventListener('click', function () {
+                changeStatus(user.id, !user.enabled);
+            });
+
+            actionCell.appendChild(button);
+            row.appendChild(actionCell);
             usersBody.appendChild(row);
         });
     } catch (error) {
         usersMessage.textContent = 'Unable to load users.';
     }
 }
+    async function changeStatus(userId, enabled) {
+        try {
+            const body = new URLSearchParams();
+            body.append('enabled', enabled ? 'true' : 'false');
+
+            const res = await fetch('/api/admin/users/' + userId + '/status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: body
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                usersMessage.textContent = data.error || 'Unable to update user status.';
+                return;
+            }
+
+            usersMessage.textContent = enabled
+                ? 'User enabled successfully.'
+                : 'User disabled successfully.';
+
+            loadUsers();
+
+        } catch (error) {
+            usersMessage.textContent = 'Unable to update user status.';
+        }
+    }
 (async function () {
     try {
         const res = await fetch('/api/admin/me');

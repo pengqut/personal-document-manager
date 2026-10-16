@@ -87,7 +87,7 @@ function showUploadMessage(text, isError) {
 }
 
 function updateHint() {
-    const remaining = limits.user_file_limit - limits.used;
+    const remaining = Math.max(0, limits.user_file_limit - limits.used);
     quotaHint.textContent = 'Max file size: ' + limits.max_file_mb + ' MB' +
         '  ·  Remaining quota: ' + remaining + ' / ' + limits.user_file_limit + ' files';
 }

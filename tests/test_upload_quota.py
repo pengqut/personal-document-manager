@@ -2,6 +2,7 @@ import io
 import json
 import os
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 from urllib.parse import urlencode
@@ -215,6 +216,33 @@ class UploadQuotaTests(unittest.TestCase):
         self.assertEqual(result['status'], 400)
         self.assertIn('MB limit', json.loads(result['body'])['error'])
         self.assertEqual(self.file_count(user['id']), 0)
+
+    # Two uploads that race for one remaining slot produce one success.
+    def test_concurrent_uploads_keep_the_quota(self):
+        user = self.create_normal_user(file_quota=1)
+        cookie = self.login('/api/login', 'alice123')
+        barrier = threading.Barrier(2)
+        statuses = []
+        lock = threading.Lock()
+
+        def upload_once(filename):
+            barrier.wait()
+            result = self.upload(cookie, filename=filename)
+            with lock:
+                statuses.append(result['status'])
+
+        threads = [
+            threading.Thread(target=upload_once, args=('one.txt',)),
+            threading.Thread(target=upload_once, args=('two.txt',)),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertCountEqual(statuses, [200, 403])
+        self.assertEqual(self.file_count(user['id']), 1)
+
 
 if __name__ == '__main__':
     unittest.main()

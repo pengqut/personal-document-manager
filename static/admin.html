@@ -13,9 +13,47 @@
 </header>
 <main class="app-content">
     <p id="message">Loading account...</p>
+    <section class="mt-4">
+        <h2>Normal Users</h2>
+        <table class="table table-bordered">
+            <thead><tr><th>Username</th><th>Status</th><th>File Quota</th><th>File Count</th></tr></thead>
+            <tbody id="users-body"></tbody>
+        </table>
+        <p id="users-message"></p>
+    </section>
 </main>
 <script>
 const message = document.getElementById('message');
+const usersBody = document.getElementById('users-body');
+const usersMessage = document.getElementById('users-message');
+
+async function loadUsers() {
+    try {
+        const res = await fetch('/api/admin/users');
+        if (!res.ok) {
+            usersMessage.textContent = 'Unable to load users.';
+            return;
+        }
+        const data = await res.json();
+        usersBody.innerHTML = '';
+        if (data.users.length === 0) {
+            usersMessage.textContent = 'No normal users found.';
+            return;
+        }
+        usersMessage.textContent = '';
+        data.users.forEach(function (user) {
+            const row = document.createElement('tr');
+            [user.username, user.enabled ? 'Enabled' : 'Disabled', user.file_quota, user.file_count].forEach(function (value) {
+                const cell = document.createElement('td');
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+            usersBody.appendChild(row);
+        });
+    } catch (error) {
+        usersMessage.textContent = 'Unable to load users.';
+    }
+}
 (async function () {
     try {
         const res = await fetch('/api/admin/me');
@@ -24,6 +62,7 @@ const message = document.getElementById('message');
         } else if (res.ok) {
             const data = await res.json();
             message.textContent = 'Signed in as ' + data.username;
+            loadUsers();
         } else {
             message.textContent = 'Unable to load your account.';
         }

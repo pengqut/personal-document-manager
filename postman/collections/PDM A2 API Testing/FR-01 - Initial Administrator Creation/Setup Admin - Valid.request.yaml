@@ -1,4 +1,18 @@
 $kind: http-request
-url: ""
-method: GET
-order: 1000
+url: "{{base_url}}/api/admin/setup"
+method: POST
+body:
+  type: urlencoded
+  content:
+    - key: username
+      value: "admin001"
+    - key: password
+      value: "Abcdefg1"
+scripts:
+  - type: beforeRequest
+    code: "pm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),\n    method: 'GET'\n}, function (error, result) {\n    pm.test('Setup status request succeeds', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n    });\n    if (!error && result) {\n        pm.test('Setup initialized is false', function () {\n            pm.expect(result.json().initialized).to.eql(false);\n        });\n    }\n});"
+    language: text/javascript
+  - type: afterResponse
+    code: "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Administrator setup succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\n\npm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),\n    method: 'GET'\n}, function (error, result) {\n    pm.test('Setup status request succeeds', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n    });\n    if (!error && result) {\n        pm.test('Setup initialized is true', function () {\n            pm.expect(result.json().initialized).to.eql(true);\n        });\n    }\n});"
+    language: text/javascript
+order: 4000

@@ -74,19 +74,71 @@ note AZ2 "$AZ2"
 echo "Subnet ${SUBNET1} in ${AZ1}"
 echo "Subnet ${SUBNET2} in ${AZ2}"
 
-ALB_SG="$(aws ec2 create-security-group --vpc-id "$VPC_ID" --group-name "pdm-alb-${RUN}" \
-  --description "PDM load balancer" --query GroupId --output text)"
+# The student role cannot create security groups. Use the groups already
+# attached to this VPC, and do not change their rules.
+aws ec2 describe-security-groups --filters "Name=vpc-id,Values=${VPC_ID}" --output json > security-groups.json
+python3 - "$VPC_CIDR" <<'PY'
+import json
+import sys
+cidr = sys.argv[1]
+groups = json.load(open("security-groups.json"))["SecurityGroups"]
+
+def covers(perm, port):
+    proto = perm.get("IpProtocol")
+    if proto == "-1":
+        return True
+    if proto not in ("tcp", "6"):
+        return False
+    start, end = perm.get("FromPort"), perm.get("ToPort")
+    return start is not None and end is not None and start <= port <= end
+
+def from_world(perm):
+    return any(item.get("CidrIp") == "0.0.0.0/0" for item in perm.get("IpRanges", []))
+
+def from_self(perm, group_id):
+    return any(item.get("GroupId") == group_id for item in perm.get("UserIdGroupPairs", []))
+
+def allows_world(sg, port):
+    return any(covers(perm, port) and from_world(perm) for perm in sg.get("IpPermissions", []))
+
+def allows_self_all(sg):
+    group_id = sg["GroupId"]
+    return any(perm.get("IpProtocol") == "-1" and from_self(perm, group_id) for perm in sg.get("IpPermissions", []))
+
+print("Security groups in %s:" % groups[0]["VpcId"] if groups else "No security groups.")
+for sg in groups:
+    print("- %s %s" % (sg["GroupId"], sg.get("GroupName")))
+
+public = [sg for sg in groups if allows_world(sg, 22) and allows_world(sg, 80)]
+public.sort(key=lambda sg: (0 if "student" in sg.get("GroupName", "").lower() else 1, sg.get("GroupName", "")))
+internal = [sg for sg in groups if allows_self_all(sg)]
+internal.sort(key=lambda sg: (0 if sg.get("GroupName") == "default" else 1, sg.get("GroupName", "")))
+if not public:
+    sys.exit("No existing security group allows SSH (22) and HTTP (80) from the internet. Creating a group is denied for this student role.")
+
+alb = public[0]
+if internal and internal[0]["GroupId"] != alb["GroupId"]:
+    db = internal[0]
+    app_ids = [alb["GroupId"], db["GroupId"]]
+else:
+    db = alb
+    app_ids = [alb["GroupId"]]
+
+with open("chosen-sgs.txt", "w", encoding="utf-8") as handle:
+    handle.write("ALB_SG=%s\n" % alb["GroupId"])
+    handle.write("DB_SG=%s\n" % db["GroupId"])
+    handle.write("APP_SGS=%s\n" % ",".join(app_ids))
+print("Load balancer group: %s %s" % (alb["GroupId"], alb.get("GroupName")))
+print("Database group: %s %s" % (db["GroupId"], db.get("GroupName")))
+print("App groups: %s" % ",".join(app_ids))
+PY
+rm -f security-groups.json
+# shellcheck disable=SC1091
+source chosen-sgs.txt
+rm -f chosen-sgs.txt
 note ALB_SG "$ALB_SG"
-APP_SG="$(aws ec2 create-security-group --vpc-id "$VPC_ID" --group-name "pdm-app-${RUN}" \
-  --description "PDM application" --query GroupId --output text)"
-note APP_SG "$APP_SG"
-DB_SG="$(aws ec2 create-security-group --vpc-id "$VPC_ID" --group-name "pdm-db-${RUN}" \
-  --description "PDM database" --query GroupId --output text)"
 note DB_SG "$DB_SG"
-aws ec2 authorize-security-group-ingress --group-id "$ALB_SG" --protocol tcp --port 80 --cidr 0.0.0.0/0 >/dev/null
-aws ec2 authorize-security-group-ingress --group-id "$APP_SG" --protocol tcp --port 80 --cidr 0.0.0.0/0 >/dev/null
-aws ec2 authorize-security-group-ingress --group-id "$APP_SG" --protocol tcp --port 22 --cidr 0.0.0.0/0 >/dev/null
-aws ec2 authorize-security-group-ingress --group-id "$DB_SG" --protocol tcp --port 5001 --source-group "$APP_SG" >/dev/null
+note APP_SGS "$APP_SGS"
 
 KEY_NAME="pdm-${RUN}"
 aws ec2 create-key-pair --key-name "$KEY_NAME" --query KeyMaterial --output text > "${GITHUB_WORKSPACE}/pdm-lab.pem"
@@ -135,7 +187,7 @@ launch_app() {
   local name="$1" subnet="$2" id_key="$3"
   local instance_id
   instance_id="$(aws ec2 run-instances --image-id "$AMI" --instance-type "$INSTANCE_TYPE" \
-    --key-name "$KEY_NAME" --subnet-id "$subnet" --security-group-ids "$APP_SG" \
+    --key-name "$KEY_NAME" --subnet-id "$subnet" --security-group-ids "${APP_GROUP_IDS[@]}" \
     --monitoring Enabled=true \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=${name}},{Key=pdm-run,Value=${RUN}},{Key=pdm-role,Value=app}]" \
     --query 'Instances[0].InstanceId' --output text)"
@@ -143,6 +195,7 @@ launch_app() {
   echo "$instance_id"
 }
 
+IFS=',' read -r -a APP_GROUP_IDS <<< "$APP_SGS"
 APP1_ID="$(launch_app PDM-App-1 "$SUBNET1" APP1_ID)"
 APP2_ID="$(launch_app PDM-App-2 "$SUBNET2" APP2_ID)"
 

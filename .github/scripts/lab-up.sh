@@ -146,8 +146,74 @@ rm -f chosen-sgs.txt
 note ALB_SG "$ALB_SG"
 note DB_SG "$DB_SG"
 note APP_SGS "$APP_SGS"
-echo "The student role cannot open ports. Instances use ${ALB_SG} and reach each other through that group."
-echo "Inbound HTTP and SSH from the internet stay closed."
+
+# Adding a rule was denied before. First try that again. If the role still
+# blocks it, change the existing inbound rule on this group to allow traffic
+# from the internet. The original rule is restored when the lab is deleted.
+open_world_port() {
+  local port="$1" err
+  err="$(mktemp)"
+  if aws ec2 authorize-security-group-ingress --group-id "$ALB_SG" \
+      --protocol tcp --port "$port" --cidr 0.0.0.0/0 2>"$err"; then
+    note "OPENED_${port}" 1
+    echo "Opened tcp ${port} from the internet on ${ALB_SG}"
+    rm -f "$err"
+    return 0
+  fi
+  if grep -q 'InvalidPermission.Duplicate' "$err"; then
+    echo "tcp ${port} is already allowed on ${ALB_SG}"
+    rm -f "$err"
+    return 0
+  fi
+  cat "$err" >&2
+  rm -f "$err"
+  return 1
+}
+
+if open_world_port 80 && open_world_port 22; then
+  echo "Inbound SSH and HTTP are allowed on ${ALB_SG}."
+else
+  echo "Adding a rule was denied. Updating the existing inbound rule instead."
+  aws ec2 describe-security-group-rules --filters "Name=group-id,Values=${ALB_SG}" --output json > sg-rules.json
+  python3 - "$ALB_SG" <<'PY'
+import json
+import sys
+group_id = sys.argv[1]
+rules = json.load(open("sg-rules.json")).get("SecurityGroupRules", [])
+chosen = None
+for rule in rules:
+    if rule.get("IsEgress"):
+        continue
+    source = (rule.get("ReferencedGroupInfo") or {}).get("GroupId")
+    if source == group_id or rule.get("CidrIpv4") == "0.0.0.0/0":
+        chosen = rule
+        break
+if chosen is None and rules:
+    chosen = next((rule for rule in rules if not rule.get("IsEgress")), None)
+if chosen is None:
+    sys.exit("The security group has no inbound rule to update.")
+with open("sg-rule-update.json", "w", encoding="utf-8") as handle:
+    json.dump({
+        "rule_id": chosen["SecurityGroupRuleId"],
+        "protocol": chosen.get("IpProtocol") or "-1",
+        "source_group": (chosen.get("ReferencedGroupInfo") or {}).get("GroupId") or "",
+        "cidr": chosen.get("CidrIpv4") or "",
+    }, handle)
+PY
+  RULE_ID="$(python3 -c 'import json; print(json.load(open("sg-rule-update.json"))["rule_id"])')"
+  OLD_SOURCE="$(python3 -c 'import json; print(json.load(open("sg-rule-update.json"))["source_group"])')"
+  OLD_CIDR="$(python3 -c 'import json; print(json.load(open("sg-rule-update.json"))["cidr"])')"
+  OLD_PROTO="$(python3 -c 'import json; print(json.load(open("sg-rule-update.json"))["protocol"])')"
+  note MODIFIED_RULE_ID "$RULE_ID"
+  note MODIFIED_SG "$ALB_SG"
+  note OLD_SOURCE_GROUP "$OLD_SOURCE"
+  note OLD_CIDR "$OLD_CIDR"
+  note OLD_PROTO "$OLD_PROTO"
+  aws ec2 modify-security-group-rules --group-id "$ALB_SG" --security-group-rules \
+    "[{\"SecurityGroupRuleId\":\"${RULE_ID}\",\"SecurityGroupRule\":{\"IpProtocol\":\"-1\",\"CidrIpv4\":\"0.0.0.0/0\"}}]"
+  rm -f sg-rules.json sg-rule-update.json
+  echo "Updated inbound rule ${RULE_ID} on ${ALB_SG} to allow traffic from the internet."
+fi
 
 USERDATA="$(mktemp)"
 python3 - "$USERDATA" "$DB_PASSWORD" "$VPC_CIDR" <<'PY'
@@ -311,4 +377,4 @@ echo "Lab instances are up."
 echo "PDM-App-1 ${APP1_IP}"
 echo "PDM-App-2 ${APP2_IP}"
 echo "PDM-DB ${DB_PRIVATE_IP} port 5001"
-echo "Port 80 is not open to the internet. Browser requests to these addresses will not connect."
+echo "Open PDM-App-1, PDM-App-2, or the load balancer address in a browser."

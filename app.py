@@ -4,8 +4,8 @@ import sys
 from urllib.parse import quote
 
 from bottle import (
-    HTTPError, HTTPResponse, install, redirect, request, response, route,
-    run, static_file,
+    HTTPError, HTTPResponse, hook, install, redirect, request, response,
+    route, run, static_file,
 )
 
 import admin_setup
@@ -26,6 +26,15 @@ with open(os.path.join(BASE_DIR, 'config.json')) as config_file:
 db = database.Database.from_environment(BASE_DIR)
 auth_service = auth.AuthService(db)
 admin_setup_service = admin_setup.AdminSetupFacade(db)
+INSTANCE_NAME = os.environ.get('PDM_INSTANCE_NAME', '')
+
+
+@hook('after_request')
+def mark_instance():
+    # Set on each EC2 instance so repeated requests through the load
+    # balancer show which server answered.
+    if INSTANCE_NAME:
+        response.set_header('X-PDM-Instance', INSTANCE_NAME)
 
 
 # Wrap every route and map exceptions to uniform JSON responses, so the

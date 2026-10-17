@@ -1,0 +1,181 @@
+name: Deploy
+
+# Tests run first. Deploy starts only after they pass.
+# Academy credentials are temporary. Enter them on the Run workflow form:
+#   AWS access key ID, secret access key, and session token.
+#   Copy all three from the Academy AWS Details page for that lab session.
+# Store only the longer-lived values as repository secrets:
+#   EC2_SSH_PRIVATE_KEY (the .pem for the two app instances)
+#   DATABASE_URL        (postgresql://user:password@db-private-ip:5001/pdm_prod)
+#   ALB_DNS             (optional, the load balancer DNS name, without http://)
+#
+# Both app instances must be running, tagged pdm-role=app, and have a
+# public IP. Security group: TCP 22 open to this runner, TCP 80 open to
+# the load balancer. The database stays private on port 5001.
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_access_key_id:
+        description: AWS access key ID from the current Academy session
+        required: true
+        type: string
+      aws_secret_access_key:
+        description: AWS secret access key from the current Academy session
+        required: true
+        type: string
+      aws_session_token:
+        description: AWS session token from the current Academy session
+        required: true
+        type: string
+      aws_region:
+        description: Region shown in the Academy lab (often us-east-1)
+        required: true
+        default: us-east-1
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pdm-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Python 3.12 / SQLite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ""
+      PDM_TEST_DATABASE_URL: ""
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -q -p no:cacheprovider
+
+  deploy:
+    name: Deploy to both EC2 instances
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+      AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+      AWS_SESSION_TOKEN: ${{ inputs.aws_session_token }}
+      AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
+      EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ALB_DNS: ${{ secrets.ALB_DNS }}
+
+    steps:
+      - name: Hide the Academy credentials in the log
+        run: |
+          echo "::add-mask::${{ inputs.aws_access_key_id }}"
+          echo "::add-mask::${{ inputs.aws_secret_access_key }}"
+          echo "::add-mask::${{ inputs.aws_session_token }}"
+
+      - name: Check out code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Require the server secrets
+        run: |
+          missing=0
+          for name in EC2_SSH_PRIVATE_KEY DATABASE_URL; do
+            if [ -z "${!name}" ]; then
+              echo "Missing GitHub secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Add the missing secrets under Settings, Secrets and variables, Actions."
+            exit 1
+          fi
+
+      - name: Find the two application instances
+        run: |
+          aws ec2 describe-instances \
+            --filters Name=tag:pdm-role,Values=app Name=instance-state-name,Values=running \
+            --output json > instances.json
+          python3 - <<'PY'
+          import json
+          import sys
+          data = json.load(open("instances.json"))
+          rows = []
+          for reservation in data["Reservations"]:
+              for instance in reservation["Instances"]:
+                  tags = {tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])}
+                  rows.append({
+                      "name": tags.get("Name") or instance["InstanceId"],
+                      "ip": instance.get("PublicIpAddress") or "",
+                      "az": instance["Placement"]["AvailabilityZone"],
+                      "id": instance["InstanceId"],
+                  })
+          rows.sort(key=lambda row: row["name"])
+          if len(rows) != 2:
+              print("Expected 2 running instances tagged pdm-role=app, found %d." % len(rows))
+              sys.exit(1)
+          missing = [row["name"] for row in rows if not row["ip"]]
+          if missing:
+              print("These instances have no public IP: %s" % ", ".join(missing))
+              sys.exit(1)
+          zones = {row["az"] for row in rows}
+          if len(zones) < 2:
+              print("Both instances are in %s. Put them in different availability zones." % rows[0]["az"])
+          with open("instances.tsv", "w", encoding="utf-8") as handle:
+              for row in rows:
+                  handle.write("%s\t%s\t%s\t%s\n" % (row["name"], row["ip"], row["az"], row["id"]))
+                  print("%s  %s  %s  %s" % (row["name"], row["id"], row["az"], row["ip"]))
+          PY
+          rm -f instances.json
+
+      - name: Deploy app 1, then app 2
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y rsync
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > "$HOME/.ssh/pdm.pem"
+          chmod 600 "$HOME/.ssh/pdm.pem"
+          ssh_base=(-i "$HOME/.ssh/pdm.pem" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
+          while IFS="$(printf '\t')" read -r name ip az instance_id; do
+            echo "Deploying ${name} (${instance_id}, ${az}) at ${ip}"
+            quoted_url="$(printf '%q' "$DATABASE_URL")"
+            quoted_name="$(printf '%q' "$name")"
+            ssh "${ssh_base[@]}" "ubuntu@${ip}" "mkdir -p /home/ubuntu/A2-PDM/.github/scripts"
+            rsync -az --delete \
+              --exclude '.git/' --exclude '.github/' --exclude '.venv/' \
+              --exclude '.env*' --exclude '*.db' --exclude 'uploads/' \
+              --exclude '__pycache__/' --exclude '.pytest_cache/' \
+              -e "ssh ${ssh_base[*]}" \
+              ./ "ubuntu@${ip}:/home/ubuntu/A2-PDM/"
+            rsync -az -e "ssh ${ssh_base[*]}" \
+              .github/scripts/deploy-app.sh \
+              "ubuntu@${ip}:/home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh"
+            ssh "${ssh_base[@]}" "ubuntu@${ip}" \
+              "chmod +x /home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh && DATABASE_URL=${quoted_url} PDM_INSTANCE_NAME=${quoted_name} bash /home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh"
+          done < instances.tsv
+
+      - name: Show which instance answers through the load balancer
+        if: env.ALB_DNS != ''
+        run: |
+          for n in 1 2 3 4 5 6; do
+            echo "request ${n}"
+            curl -sS -D - "http://${ALB_DNS}/api/admin/setup-status" -o /tmp/body.json
+            echo
+          done

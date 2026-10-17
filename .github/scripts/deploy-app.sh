@@ -69,6 +69,7 @@ else
   sudo pm2 start "$ECOSYSTEM"
 fi
 sudo pm2 save
+sudo pm2 startup systemd -u root --hp /root >/dev/null
 sudo pm2 status
 
 "$APP_DIR/.venv/bin/python" - <<'PY'

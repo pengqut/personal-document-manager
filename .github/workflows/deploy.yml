@@ -3,10 +3,10 @@ name: Deploy
 # Tests run first. The deploy job then installs the app on an EC2 instance
 # that already exists and keeps running after the job (it is not deleted).
 #
-# The instance has no key pair. The job uses EC2 Instance Connect to push a
-# one-time SSH public key, which is valid for 60 seconds per connection.
-# The instance must run Ubuntu and its security group must allow SSH (22)
-# and HTTP (80) from the internet.
+# The job logs in over SSH with the instance's key pair, stored in the
+# repository secret EC2_SSH_PRIVATE_KEY. The student role cannot use
+# EC2 Instance Connect. The instance must run Ubuntu and its security group
+# must allow SSH (22) and HTTP (80) from the internet.
 #
 # On the instance: PostgreSQL on port 5001 (local connections only), the app
 # in /home/ubuntu/A2-PDM under PM2 on port 80. Assignment 1 is not touched.
@@ -38,7 +38,7 @@ on:
       instance_id:
         description: EC2 instance to deploy to
         required: true
-        default: i-0d1cc054c82f6b5c8
+        default: i-09e52d6ce18896af6
         type: string
 
 permissions:
@@ -134,20 +134,22 @@ jobs:
             echo "APP_NAME=${name}"
           } >> "$GITHUB_ENV"
 
-      - name: Prepare a one-time SSH key
+      - name: Prepare the SSH key
+        env:
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         run: |
-          ssh-keygen -q -t ed25519 -N "" -f "$RUNNER_TEMP/pdm_key"
+          if [ -z "$EC2_SSH_PRIVATE_KEY" ]; then
+            echo "Add the instance's .pem file as the repository secret EC2_SSH_PRIVATE_KEY." >&2
+            exit 1
+          fi
+          (umask 077 && printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/pdm_key")
           cat > "$RUNNER_TEMP/remote.sh" <<'EOF'
           #!/usr/bin/env bash
           set -euo pipefail
-          aws ec2-instance-connect send-ssh-public-key \
-            --instance-id "$INSTANCE_ID" \
-            --instance-os-user "$SSH_USER" \
-            --ssh-public-key "file://${RUNNER_TEMP}/pdm_key.pub" >/dev/null
           exec ssh -i "${RUNNER_TEMP}/pdm_key" \
             -o StrictHostKeyChecking=accept-new \
             -o UserKnownHostsFile="${RUNNER_TEMP}/known_hosts" \
-            -o ConnectTimeout=20 -o ServerAliveInterval=30 \
+            -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=30 \
             "${SSH_USER}@${APP_IP}" "$@"
           EOF
           chmod +x "$RUNNER_TEMP/remote.sh"

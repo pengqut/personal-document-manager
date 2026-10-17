@@ -1,17 +1,14 @@
 name: Deploy
 
-# Tests run first. Deploy starts only after they pass.
-# Academy credentials are temporary. Enter them on the Run workflow form:
-#   AWS access key ID, secret access key, and session token.
-#   Copy all three from the Academy AWS Details page for that lab session.
-# Store only the longer-lived values as repository secrets:
-#   EC2_SSH_PRIVATE_KEY (the .pem for the two app instances)
-#   DATABASE_URL        (postgresql://user:password@db-private-ip:5001/pdm_prod)
-#   ALB_DNS             (optional, the load balancer DNS name, without http://)
+# Tests run first. This run then creates the whole lab and deletes it
+# before the job ends, including when a later step fails.
 #
-# Both app instances must be running, tagged pdm-role=app, and have a
-# public IP. Security group: TCP 22 open to this runner, TCP 80 open to
-# the load balancer. The database stays private on port 5001.
+# Created for the run: a VPC, two subnets in different zones, one private
+# PostgreSQL instance on port 5001, two app instances with PM2, and an
+# internet-facing Application Load Balancer. Health check: GET /api/admin/setup-status.
+#
+# Academy credentials are temporary. Enter them on the Run workflow form.
+# Copy the access key, secret key, and session token from AWS Details.
 
 on:
   workflow_dispatch:
@@ -32,6 +29,16 @@ on:
         description: Region shown in the Academy lab (often us-east-1)
         required: true
         default: us-east-1
+        type: string
+      instance_type:
+        description: EC2 size for the database and both app servers
+        required: true
+        default: t3.medium
+        type: string
+      screenshot_minutes:
+        description: Minutes to leave the lab up for screenshots before deletion
+        required: true
+        default: "10"
         type: string
 
 permissions:
@@ -69,18 +76,16 @@ jobs:
         run: python -m pytest -q -p no:cacheprovider
 
   deploy:
-    name: Deploy to both EC2 instances
+    name: Create, deploy, then delete the lab
     needs: test
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 90
     env:
       AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
       AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
       AWS_SESSION_TOKEN: ${{ inputs.aws_session_token }}
       AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
-      EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      ALB_DNS: ${{ secrets.ALB_DNS }}
+      INSTANCE_TYPE: ${{ inputs.instance_type }}
 
     steps:
       - name: Hide the Academy credentials in the log
@@ -94,67 +99,28 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Require the server secrets
-        run: |
-          missing=0
-          for name in EC2_SSH_PRIVATE_KEY DATABASE_URL; do
-            if [ -z "${!name}" ]; then
-              echo "Missing GitHub secret: $name"
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            echo "Add the missing secrets under Settings, Secrets and variables, Actions."
-            exit 1
-          fi
+      - name: Create the network, database, and both app servers
+        run: bash .github/scripts/lab-up.sh
 
-      - name: Find the two application instances
+      - name: Deploy the application with PM2
         run: |
-          aws ec2 describe-instances \
-            --filters Name=tag:pdm-role,Values=app Name=instance-state-name,Values=running \
-            --output json > instances.json
-          python3 - <<'PY'
-          import json
-          import sys
-          data = json.load(open("instances.json"))
-          rows = []
-          for reservation in data["Reservations"]:
-              for instance in reservation["Instances"]:
-                  tags = {tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])}
-                  rows.append({
-                      "name": tags.get("Name") or instance["InstanceId"],
-                      "ip": instance.get("PublicIpAddress") or "",
-                      "az": instance["Placement"]["AvailabilityZone"],
-                      "id": instance["InstanceId"],
-                  })
-          rows.sort(key=lambda row: row["name"])
-          if len(rows) != 2:
-              print("Expected 2 running instances tagged pdm-role=app, found %d." % len(rows))
-              sys.exit(1)
-          missing = [row["name"] for row in rows if not row["ip"]]
-          if missing:
-              print("These instances have no public IP: %s" % ", ".join(missing))
-              sys.exit(1)
-          zones = {row["az"] for row in rows}
-          if len(zones) < 2:
-              print("Both instances are in %s. Put them in different availability zones." % rows[0]["az"])
-          with open("instances.tsv", "w", encoding="utf-8") as handle:
-              for row in rows:
-                  handle.write("%s\t%s\t%s\t%s\n" % (row["name"], row["ip"], row["az"], row["id"]))
-                  print("%s  %s  %s  %s" % (row["name"], row["id"], row["az"], row["ip"]))
-          PY
-          rm -f instances.json
-
-      - name: Deploy app 1, then app 2
-        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source pdm-lab.env
+          set +a
+          echo "::add-mask::${DB_PASSWORD}"
+          DATABASE_URL="postgresql://pdm_user:${DB_PASSWORD}@${DB_PRIVATE_IP}:5001/pdm_prod"
+          echo "::add-mask::${DATABASE_URL}"
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y rsync
-          install -m 700 -d "$HOME/.ssh"
-          printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > "$HOME/.ssh/pdm.pem"
-          chmod 600 "$HOME/.ssh/pdm.pem"
-          ssh_base=(-i "$HOME/.ssh/pdm.pem" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
-          while IFS="$(printf '\t')" read -r name ip az instance_id; do
-            echo "Deploying ${name} (${instance_id}, ${az}) at ${ip}"
+          ssh_base=(-i "${GITHUB_WORKSPACE}/pdm-lab.pem" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="${RUNNER_TEMP}/pdm-known-hosts")
+          for name in PDM-App-1 PDM-App-2; do
+            if [ "$name" = "PDM-App-1" ]; then
+              ip="$APP1_IP"
+            else
+              ip="$APP2_IP"
+            fi
+            echo "Deploying ${name} at ${ip}"
             quoted_url="$(printf '%q' "$DATABASE_URL")"
             quoted_name="$(printf '%q' "$name")"
             ssh "${ssh_base[@]}" "ubuntu@${ip}" "mkdir -p /home/ubuntu/A2-PDM/.github/scripts"
@@ -162,20 +128,79 @@ jobs:
               --exclude '.git/' --exclude '.github/' --exclude '.venv/' \
               --exclude '.env*' --exclude '*.db' --exclude 'uploads/' \
               --exclude '__pycache__/' --exclude '.pytest_cache/' \
-              -e "ssh ${ssh_base[*]}" \
+              -e "ssh -i ${GITHUB_WORKSPACE}/pdm-lab.pem -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${RUNNER_TEMP}/pdm-known-hosts" \
               ./ "ubuntu@${ip}:/home/ubuntu/A2-PDM/"
-            rsync -az -e "ssh ${ssh_base[*]}" \
+            rsync -az \
+              -e "ssh -i ${GITHUB_WORKSPACE}/pdm-lab.pem -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${RUNNER_TEMP}/pdm-known-hosts" \
               .github/scripts/deploy-app.sh \
               "ubuntu@${ip}:/home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh"
             ssh "${ssh_base[@]}" "ubuntu@${ip}" \
               "chmod +x /home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh && DATABASE_URL=${quoted_url} PDM_INSTANCE_NAME=${quoted_name} bash /home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh"
-          done < instances.tsv
+          done
 
-      - name: Show which instance answers through the load balancer
-        if: env.ALB_DNS != ''
+      - name: Show PM2 status on both servers
         run: |
+          # shellcheck disable=SC1091
+          source pdm-lab.env
+          ssh_base=(-i "${GITHUB_WORKSPACE}/pdm-lab.pem" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="${RUNNER_TEMP}/pdm-known-hosts")
+          echo "PDM-App-1 ${APP1_IP}"
+          ssh "${ssh_base[@]}" "ubuntu@${APP1_IP}" sudo pm2 status
+          echo "PDM-App-2 ${APP2_IP}"
+          ssh "${ssh_base[@]}" "ubuntu@${APP2_IP}" sudo pm2 status
+
+      - name: Create the load balancer
+        run: bash .github/scripts/lab-alb.sh
+
+      - name: Leave the lab up for screenshots
+        run: |
+          # shellcheck disable=SC1091
+          source pdm-lab.env
+          echo "PDM-App-1 http://${APP1_IP}"
+          echo "PDM-App-2 http://${APP2_IP}"
+          echo "Load balancer http://${ALB_DNS}"
+          echo "Both targets are healthy. Take the EC2, target group, load balancer, and browser screenshots now."
           for n in 1 2 3 4 5 6; do
             echo "request ${n}"
-            curl -sS -D - "http://${ALB_DNS}/api/admin/setup-status" -o /tmp/body.json
+            curl --retry 5 --retry-delay 5 --retry-all-errors -sS -D - "http://${ALB_DNS}/api/admin/setup-status" -o /tmp/body.json
             echo
           done
+          minutes="${{ inputs.screenshot_minutes }}"
+          if ! [[ "$minutes" =~ ^[0-9]+$ ]]; then
+            minutes=10
+          fi
+          echo "The load test starts after ${minutes} minutes. The lab is deleted after that test."
+          sleep $((minutes * 60))
+
+      - name: Run the two Apache Benchmark tests
+        run: |
+          # shellcheck disable=SC1091
+          source pdm-lab.env
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apache2-utils
+          echo "Baseline: 100 requests, concurrency 5"
+          ab -n 100 -c 5 "http://${ALB_DNS}/api/admin/setup-status"
+          echo "Higher load: 500 requests, concurrency 20"
+          ab -n 500 -c 20 "http://${ALB_DNS}/api/admin/setup-status"
+
+      - name: Read CloudWatch CPU for both app servers
+        run: |
+          # shellcheck disable=SC1091
+          source pdm-lab.env
+          echo "Waiting 3 minutes so the CloudWatch CPU graph can show the load test."
+          sleep 180
+          end="$(date -u +%Y-%m-%dT%H:%M:%S)"
+          start="$(date -u -d '30 minutes ago' +%Y-%m-%dT%H:%M:%S)"
+          for instance_id in "$APP1_ID" "$APP2_ID"; do
+            echo "CPU ${instance_id}"
+            aws cloudwatch get-metric-statistics \
+              --namespace AWS/EC2 --metric-name CPUUtilization \
+              --dimensions "Name=InstanceId,Value=${instance_id}" \
+              --start-time "$start" --end-time "$end" \
+              --period 60 --statistics Average Maximum
+          done
+
+      - name: Delete the lab
+        if: always()
+        run: |
+          if [ -f .github/scripts/lab-down.sh ]; then
+            bash .github/scripts/lab-down.sh
+          fi

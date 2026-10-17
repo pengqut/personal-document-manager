@@ -46,26 +46,7 @@ for sg in "${DB_SG:-}" "${APP_SG:-}" "${ALB_SG:-}"; do
   retry aws ec2 delete-security-group --group-id "$sg" || true
 done
 
-for assoc in "${ASSOC1:-}" "${ASSOC2:-}"; do
-  [ -n "$assoc" ] || continue
-  aws ec2 disassociate-route-table --association-id "$assoc" || true
-done
-if [ -n "${RT_ID:-}" ]; then
-  retry aws ec2 delete-route-table --route-table-id "$RT_ID" || true
-fi
-for subnet in "${SUBNET1:-}" "${SUBNET2:-}"; do
-  [ -n "$subnet" ] || continue
-  retry aws ec2 delete-subnet --subnet-id "$subnet" || true
-done
-if [ -n "${IGW_ID:-}" ] && [ -n "${VPC_ID:-}" ]; then
-  aws ec2 detach-internet-gateway --internet-gateway-id "$IGW_ID" --vpc-id "$VPC_ID" || true
-fi
-if [ -n "${IGW_ID:-}" ]; then
-  retry aws ec2 delete-internet-gateway --internet-gateway-id "$IGW_ID" || true
-fi
-if [ -n "${VPC_ID:-}" ]; then
-  retry aws ec2 delete-vpc --vpc-id "$VPC_ID" || true
-fi
+# The VPC, subnets, and route tables belong to the student lab. Leave them.
 
 rm -f "${GITHUB_WORKSPACE}/pdm-lab.pem" "$STATE"
 echo "Lab resources for this run have been deleted."

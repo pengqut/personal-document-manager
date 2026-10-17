@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Create the lab: VPC, two public subnets, database instance, two app instances.
-# Resource ids are appended to pdm-lab.env as soon as they exist so a later
-# failure can still delete them.
+# Launch the database and both app instances in the lab VPC that already
+# exists. The student role cannot create a VPC. Resource ids are appended
+# to pdm-lab.env as soon as they exist so a later failure can still delete
+# the instances, key pair, and security groups from this run.
 set -euo pipefail
 
 STATE="${GITHUB_WORKSPACE}/pdm-lab.env"
@@ -25,51 +26,53 @@ AMI="$(aws ssm get-parameter \
   --query Parameter.Value --output text)"
 note AMI "$AMI"
 
-read -r AZ1 AZ2 _ <<<"$(aws ec2 describe-availability-zones \
-  --filters Name=state,Values=available \
-  --query 'AvailabilityZones[].ZoneName' --output text)"
-if [ -z "${AZ1:-}" ] || [ -z "${AZ2:-}" ]; then
-  echo "This region does not have two availability zones." >&2
+VPC_ID="$(aws ec2 describe-vpcs --filters Name=is-default,Values=true \
+  --query 'Vpcs[0].VpcId' --output text)"
+if [ -z "$VPC_ID" ] || [ "$VPC_ID" = "None" ]; then
+  VPC_ID="$(aws ec2 describe-vpcs --query 'Vpcs[0].VpcId' --output text)"
+fi
+if [ -z "$VPC_ID" ] || [ "$VPC_ID" = "None" ]; then
+  echo "No VPC exists in this region, and the student role cannot create one." >&2
   exit 1
 fi
+VPC_CIDR="$(aws ec2 describe-vpcs --vpc-ids "$VPC_ID" --query 'Vpcs[0].CidrBlock' --output text)"
+note VPC_ID "$VPC_ID"
+note VPC_CIDR "$VPC_CIDR"
+echo "Using existing VPC ${VPC_ID} (${VPC_CIDR})."
+
+aws ec2 describe-subnets --filters "Name=vpc-id,Values=${VPC_ID}" --output json > subnets.json
+python3 - <<'PY'
+import json
+import sys
+subnets = json.load(open("subnets.json"))["Subnets"]
+public = [item for item in subnets if item.get("MapPublicIpOnLaunch")]
+pool = public or subnets
+chosen = []
+seen = set()
+for item in pool:
+    zone = item["AvailabilityZone"]
+    if zone in seen:
+        continue
+    seen.add(zone)
+    chosen.append(item)
+    if len(chosen) == 2:
+        break
+if len(chosen) < 2:
+    sys.exit("The VPC needs two subnets in different availability zones.")
+with open("chosen-subnets.txt", "w", encoding="utf-8") as handle:
+    for item in chosen:
+        handle.write("%s %s\n" % (item["SubnetId"], item["AvailabilityZone"]))
+PY
+rm -f subnets.json
+read -r SUBNET1 AZ1 < chosen-subnets.txt
+read -r SUBNET2 AZ2 < <(sed -n '2p' chosen-subnets.txt)
+rm -f chosen-subnets.txt
+note SUBNET1 "$SUBNET1"
+note SUBNET2 "$SUBNET2"
 note AZ1 "$AZ1"
 note AZ2 "$AZ2"
-
-VPC_ID="$(aws ec2 create-vpc --cidr-block 10.20.0.0/16 \
-  --tag-specifications "ResourceType=vpc,Tags=[{Key=Name,Value=pdm-${RUN}},{Key=pdm-run,Value=${RUN}}]" \
-  --query Vpc.VpcId --output text)"
-note VPC_ID "$VPC_ID"
-aws ec2 modify-vpc-attribute --vpc-id "$VPC_ID" --enable-dns-support '{"Value":true}'
-aws ec2 modify-vpc-attribute --vpc-id "$VPC_ID" --enable-dns-hostnames '{"Value":true}'
-
-IGW_ID="$(aws ec2 create-internet-gateway \
-  --tag-specifications "ResourceType=internet-gateway,Tags=[{Key=Name,Value=pdm-igw-${RUN}},{Key=pdm-run,Value=${RUN}}]" \
-  --query InternetGateway.InternetGatewayId --output text)"
-note IGW_ID "$IGW_ID"
-aws ec2 attach-internet-gateway --internet-gateway-id "$IGW_ID" --vpc-id "$VPC_ID"
-
-SUBNET1="$(aws ec2 create-subnet --vpc-id "$VPC_ID" --cidr-block 10.20.1.0/24 \
-  --availability-zone "$AZ1" \
-  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=pdm-public-1-${RUN}},{Key=pdm-run,Value=${RUN}}]" \
-  --query Subnet.SubnetId --output text)"
-note SUBNET1 "$SUBNET1"
-SUBNET2="$(aws ec2 create-subnet --vpc-id "$VPC_ID" --cidr-block 10.20.2.0/24 \
-  --availability-zone "$AZ2" \
-  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=pdm-public-2-${RUN}},{Key=pdm-run,Value=${RUN}}]" \
-  --query Subnet.SubnetId --output text)"
-note SUBNET2 "$SUBNET2"
-aws ec2 modify-subnet-attribute --subnet-id "$SUBNET1" --map-public-ip-on-launch
-aws ec2 modify-subnet-attribute --subnet-id "$SUBNET2" --map-public-ip-on-launch
-
-RT_ID="$(aws ec2 create-route-table --vpc-id "$VPC_ID" \
-  --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=pdm-public-${RUN}},{Key=pdm-run,Value=${RUN}}]" \
-  --query RouteTable.RouteTableId --output text)"
-note RT_ID "$RT_ID"
-aws ec2 create-route --route-table-id "$RT_ID" --destination-cidr-block 0.0.0.0/0 --gateway-id "$IGW_ID" >/dev/null
-ASSOC1="$(aws ec2 associate-route-table --route-table-id "$RT_ID" --subnet-id "$SUBNET1" --query AssociationId --output text)"
-ASSOC2="$(aws ec2 associate-route-table --route-table-id "$RT_ID" --subnet-id "$SUBNET2" --query AssociationId --output text)"
-note ASSOC1 "$ASSOC1"
-note ASSOC2 "$ASSOC2"
+echo "Subnet ${SUBNET1} in ${AZ1}"
+echo "Subnet ${SUBNET2} in ${AZ2}"
 
 ALB_SG="$(aws ec2 create-security-group --vpc-id "$VPC_ID" --group-name "pdm-alb-${RUN}" \
   --description "PDM load balancer" --query GroupId --output text)"
@@ -91,9 +94,9 @@ chmod 600 "${GITHUB_WORKSPACE}/pdm-lab.pem"
 note KEY_NAME "$KEY_NAME"
 
 USERDATA="$(mktemp)"
-python3 - "$USERDATA" "$DB_PASSWORD" <<'PY'
+python3 - "$USERDATA" "$DB_PASSWORD" "$VPC_CIDR" <<'PY'
 import sys
-path, password = sys.argv[1], sys.argv[2]
+path, password, cidr = sys.argv[1], sys.argv[2], sys.argv[3]
 script = """#!/bin/bash
 set -eu
 export DEBIAN_FRONTEND=noninteractive
@@ -104,7 +107,7 @@ cat >> "$PG_DIR/postgresql.conf" <<'CONF'
 listen_addresses = '*'
 port = 5001
 CONF
-echo "host all pdm_user 10.20.0.0/16 scram-sha-256" >> "$PG_DIR/pg_hba.conf"
+echo "host all pdm_user CIDR_TOKEN scram-sha-256" >> "$PG_DIR/pg_hba.conf"
 systemctl restart postgresql
 for try in $(seq 1 30); do
   if sudo -u postgres psql -c 'SELECT 1' >/dev/null; then
@@ -115,11 +118,13 @@ done
 sudo -u postgres psql -c "CREATE ROLE pdm_user LOGIN PASSWORD 'PASSWORD_TOKEN' CREATEDB"
 echo "PDM-DB-$(printf READY)"
 """
-open(path, "w", encoding="utf-8").write(script.replace("PASSWORD_TOKEN", password))
+open(path, "w", encoding="utf-8").write(
+    script.replace("PASSWORD_TOKEN", password).replace("CIDR_TOKEN", cidr)
+)
 PY
 
 DB_ID="$(aws ec2 run-instances --image-id "$AMI" --instance-type "$INSTANCE_TYPE" \
-  --network-interfaces "DeviceIndex=0,SubnetId=${SUBNET1},Groups=${DB_SG},AssociatePublicIpAddress=false" \
+  --subnet-id "$SUBNET1" --security-group-ids "$DB_SG" --associate-public-ip-address \
   --user-data "file://${USERDATA}" --monitoring Enabled=true \
   --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=PDM-DB},{Key=pdm-run,Value=${RUN}},{Key=pdm-role,Value=db}]" \
   --query 'Instances[0].InstanceId' --output text)"

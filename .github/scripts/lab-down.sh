@@ -20,6 +20,23 @@ retry() {
   return 0
 }
 
+if [ -n "${MODIFIED_RULE_ID:-}" ] && [ -n "${MODIFIED_SG:-}" ]; then
+  if [ -n "${OLD_SOURCE_GROUP:-}" ]; then
+    aws ec2 modify-security-group-rules --group-id "$MODIFIED_SG" --security-group-rules \
+      "[{\"SecurityGroupRuleId\":\"${MODIFIED_RULE_ID}\",\"SecurityGroupRule\":{\"IpProtocol\":\"${OLD_PROTO:--1}\",\"ReferencedGroupId\":\"${OLD_SOURCE_GROUP}\"}}]" || true
+  elif [ -n "${OLD_CIDR:-}" ]; then
+    aws ec2 modify-security-group-rules --group-id "$MODIFIED_SG" --security-group-rules \
+      "[{\"SecurityGroupRuleId\":\"${MODIFIED_RULE_ID}\",\"SecurityGroupRule\":{\"IpProtocol\":\"${OLD_PROTO:--1}\",\"CidrIpv4\":\"${OLD_CIDR}\"}}]" || true
+  fi
+  echo "Restored the original inbound rule on ${MODIFIED_SG}."
+fi
+if [ "${OPENED_80:-}" = "1" ] && [ -n "${ALB_SG:-}" ]; then
+  aws ec2 revoke-security-group-ingress --group-id "$ALB_SG" --protocol tcp --port 80 --cidr 0.0.0.0/0 || true
+fi
+if [ "${OPENED_22:-}" = "1" ] && [ -n "${ALB_SG:-}" ]; then
+  aws ec2 revoke-security-group-ingress --group-id "$ALB_SG" --protocol tcp --port 22 --cidr 0.0.0.0/0 || true
+fi
+
 if [ -n "${API_ID:-}" ]; then
   aws apigatewayv2 delete-api --api-id "$API_ID" || true
 fi

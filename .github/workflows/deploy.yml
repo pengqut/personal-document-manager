@@ -123,7 +123,7 @@ jobs:
           echo "Both targets are healthy. Take the EC2, target group, and load balancer screenshots now."
           for n in 1 2 3 4 5 6; do
             echo "request ${n}"
-            curl --retry 2 --retry-delay 3 --retry-all-errors -sS -D - "${PUBLIC_URL}/api/admin/setup-status" -o /tmp/body.json
+            curl --retry 5 --retry-delay 5 --retry-all-errors -sS -D - "http://${ALB_DNS}/api/admin/setup-status" -o /tmp/body.json
             echo
           done
           minutes="${{ inputs.screenshot_minutes }}"
@@ -139,9 +139,9 @@ jobs:
           source pdm-lab.env
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apache2-utils
           echo "Baseline: 100 requests, concurrency 5"
-          ab -n 100 -c 5 "${PUBLIC_URL}/api/admin/setup-status"
+          ab -n 100 -c 5 "http://${ALB_DNS}/api/admin/setup-status"
           echo "Higher load: 500 requests, concurrency 20"
-          ab -n 500 -c 20 "${PUBLIC_URL}/api/admin/setup-status"
+          ab -n 500 -c 20 "http://${ALB_DNS}/api/admin/setup-status"
 
       - name: Read CloudWatch CPU for both app servers
         run: |

@@ -6,8 +6,9 @@ name: Deploy
 # does not delete the lab network.
 #
 # Created for the run: one PostgreSQL instance on port 5001, two app
-# instances with PM2, their security groups, and an internet-facing
-# Application Load Balancer. Health check: GET /api/admin/setup-status.
+# instances with PM2, and an internet-facing Application Load Balancer.
+# Security groups are the ones already on the lab VPC. Creating a group
+# is denied for the student role. Health check: GET /api/admin/setup-status.
 #
 # Academy credentials are temporary. Enter them on the Run workflow form.
 # Copy the access key, secret key, and session token from AWS Details.

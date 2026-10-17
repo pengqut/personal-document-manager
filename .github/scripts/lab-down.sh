@@ -41,12 +41,7 @@ if [ -n "${KEY_NAME:-}" ]; then
   aws ec2 delete-key-pair --key-name "$KEY_NAME" || true
 fi
 
-for sg in "${DB_SG:-}" "${APP_SG:-}" "${ALB_SG:-}"; do
-  [ -n "$sg" ] || continue
-  retry aws ec2 delete-security-group --group-id "$sg" || true
-done
-
-# The VPC, subnets, and route tables belong to the student lab. Leave them.
+# The VPC and its security groups belong to the student lab. Leave them.
 
 rm -f "${GITHUB_WORKSPACE}/pdm-lab.pem" "$STATE"
 echo "Lab resources for this run have been deleted."

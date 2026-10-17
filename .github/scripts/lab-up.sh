@@ -74,8 +74,8 @@ note AZ2 "$AZ2"
 echo "Subnet ${SUBNET1} in ${AZ1}"
 echo "Subnet ${SUBNET2} in ${AZ2}"
 
-# The student role cannot create security groups. Use the groups already
-# attached to this VPC, and do not change their rules.
+# The student role cannot create a security group. Use the default group
+# and add SSH and HTTP rules when they are missing.
 aws ec2 describe-security-groups --filters "Name=vpc-id,Values=${VPC_ID}" --output json > security-groups.json
 python3 - "$VPC_CIDR" <<'PY'
 import json
@@ -113,21 +113,28 @@ public = [sg for sg in groups if allows_world(sg, 22) and allows_world(sg, 80)]
 public.sort(key=lambda sg: (0 if "student" in sg.get("GroupName", "").lower() else 1, sg.get("GroupName", "")))
 internal = [sg for sg in groups if allows_self_all(sg)]
 internal.sort(key=lambda sg: (0 if sg.get("GroupName") == "default" else 1, sg.get("GroupName", "")))
-if not public:
-    sys.exit("No existing security group allows SSH (22) and HTTP (80) from the internet. Creating a group is denied for this student role.")
-
-alb = public[0]
-if internal and internal[0]["GroupId"] != alb["GroupId"]:
-    db = internal[0]
-    app_ids = [alb["GroupId"], db["GroupId"]]
+needs_ingress = "0"
+if public:
+    alb = public[0]
+    if internal and internal[0]["GroupId"] != alb["GroupId"]:
+        db = internal[0]
+        app_ids = [alb["GroupId"], db["GroupId"]]
+    else:
+        db = alb
+        app_ids = [alb["GroupId"]]
 else:
-    db = alb
+    default = [sg for sg in groups if sg.get("GroupName") == "default"]
+    if not default:
+        sys.exit("The VPC has no default security group, and creating one is denied.")
+    alb = db = default[0]
     app_ids = [alb["GroupId"]]
+    needs_ingress = "1"
 
 with open("chosen-sgs.txt", "w", encoding="utf-8") as handle:
     handle.write("ALB_SG=%s\n" % alb["GroupId"])
     handle.write("DB_SG=%s\n" % db["GroupId"])
     handle.write("APP_SGS=%s\n" % ",".join(app_ids))
+    handle.write("NEEDS_INGRESS=%s\n" % needs_ingress)
 print("Load balancer group: %s %s" % (alb["GroupId"], alb.get("GroupName")))
 print("Database group: %s %s" % (db["GroupId"], db.get("GroupName")))
 print("App groups: %s" % ",".join(app_ids))
@@ -139,6 +146,29 @@ rm -f chosen-sgs.txt
 note ALB_SG "$ALB_SG"
 note DB_SG "$DB_SG"
 note APP_SGS "$APP_SGS"
+
+open_port() {
+  local group_id="$1" port="$2" flag="$3" err
+  err="$(mktemp)"
+  if aws ec2 authorize-security-group-ingress --group-id "$group_id" \
+      --protocol tcp --port "$port" --cidr 0.0.0.0/0 2>"$err"; then
+    note "$flag" 1
+    echo "Opened tcp ${port} from the internet on ${group_id}"
+  elif grep -q 'InvalidPermission.Duplicate' "$err"; then
+    echo "tcp ${port} is already allowed on ${group_id}"
+  else
+    cat "$err" >&2
+    rm -f "$err"
+    exit 1
+  fi
+  rm -f "$err"
+}
+
+if [ "${NEEDS_INGRESS}" = "1" ]; then
+  echo "The default group does not allow SSH or HTTP from the internet. Adding those two rules."
+  open_port "$ALB_SG" 22 OPENED_22
+  open_port "$ALB_SG" 80 OPENED_80
+fi
 
 KEY_NAME="pdm-${RUN}"
 aws ec2 create-key-pair --key-name "$KEY_NAME" --query KeyMaterial --output text > "${GITHUB_WORKSPACE}/pdm-lab.pem"

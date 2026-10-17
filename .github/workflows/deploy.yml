@@ -7,8 +7,9 @@ name: Deploy
 #
 # Created for the run: one PostgreSQL instance on port 5001, two app
 # instances with PM2, and an internet-facing Application Load Balancer.
-# Security groups are the ones already on the lab VPC. Creating a group
-# is denied for the student role. Health check: GET /api/admin/setup-status.
+# The only security group in the lab is the default group. This run adds
+# inbound SSH and HTTP on that group, then removes those two rules at the
+# end. Health check: GET /api/admin/setup-status.
 #
 # Academy credentials are temporary. Enter them on the Run workflow form.
 # Copy the access key, secret key, and session token from AWS Details.

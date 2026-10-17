@@ -1,0 +1,12 @@
+# Run this folder in saved order against a development/test database only.
+$kind: http-request
+url: "{{base_url}}/api/logout"
+method: POST
+headers:
+  - key: Cookie
+    value: "token={{user_token}}"
+scripts:
+  - type: afterResponse
+    code: "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Operation succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\npm.environment.unset('user_token');"
+    language: text/javascript
+order: 9000

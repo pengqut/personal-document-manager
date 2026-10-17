@@ -1,0 +1,19 @@
+# Run this folder in saved order against a development/test database only.
+$kind: http-request
+url: "{{base_url}}/api/login"
+method: POST
+body:
+  type: urlencoded
+  content:
+    - key: username
+      value: "{{fr02_admin_username}}"
+    - key: password
+      value: "{{fr02_admin_password}}"
+scripts:
+  - type: beforeRequest
+    code: "// Development/test database only. Run Prepare Administrator first.\n// The preparation requests initialize/verify the administrator and ordinary test user.\npm.variables.set('fr02_admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('fr02_admin_password', pm.environment.get('admin_password') || 'Abcdefg1');\npm.variables.set('fr02_user_username', 'fr02user');\npm.variables.set('fr02_user_password', 'Abcdefg1');\n"
+    language: text/javascript
+  - type: afterResponse
+    code: "pm.test('Status code is 401', function () {\n    pm.response.to.have.status(401);\n});\npm.test('Expected error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Username or password is incorrect.\");\n});\npm.test('Rejected login does not issue a session', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.eql('');\n});"
+    language: text/javascript
+order: 6000

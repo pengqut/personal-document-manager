@@ -1,4 +1,19 @@
+# Run this folder in saved order against a development/test database only.
 $kind: http-request
-url: ""
-method: GET
+url: "{{base_url}}/api/admin/login"
+method: POST
+body:
+  type: urlencoded
+  content:
+    - key: username
+      value: "{{fr02_admin_username}}"
+    - key: password
+      value: "{{fr02_admin_password}}"
+scripts:
+  - type: beforeRequest
+    code: "// Development/test database only. Run Prepare Administrator first.\n// The preparation requests initialize/verify the administrator and ordinary test user.\npm.variables.set('fr02_admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('fr02_admin_password', pm.environment.get('admin_password') || 'Abcdefg1');\npm.variables.set('fr02_user_username', 'fr02user');\npm.variables.set('fr02_user_password', 'Abcdefg1');\npm.environment.unset('admin_token');"
+    language: text/javascript
+  - type: afterResponse
+    code: "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Operation succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\npm.test('Expected account logged in', function () {\n    pm.expect(pm.response.json().username).to.eql(pm.variables.get('fr02_admin_username'));\n});\npm.test('Session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.match(/token=[a-f0-9]{32}/);\n});\nif (pm.response.code === 200) {\n    var match = (pm.response.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);\n    if (match) pm.environment.set('admin_token', match[1]);\n}\npm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/me'),\n    method: 'GET',\n    header: {Cookie: 'token=' + pm.environment.get('admin_token')}\n}, function (error, result) {\n    pm.test('Administrator can access the protected API', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n        pm.expect(result.json().role).to.eql('admin');\n        pm.expect(result.json().username).to.eql(pm.variables.get('fr02_admin_username'));\n    });\n});"
+    language: text/javascript
 order: 1000

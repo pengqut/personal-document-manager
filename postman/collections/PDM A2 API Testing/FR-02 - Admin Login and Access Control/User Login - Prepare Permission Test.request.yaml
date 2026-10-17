@@ -1,0 +1,19 @@
+# Run this folder in saved order against a development/test database only.
+$kind: http-request
+url: "{{base_url}}/api/login"
+method: POST
+body:
+  type: urlencoded
+  content:
+    - key: username
+      value: "{{fr02_user_username}}"
+    - key: password
+      value: "{{fr02_user_password}}"
+scripts:
+  - type: beforeRequest
+    code: "// Development/test database only. Run Prepare Administrator first.\n// The preparation requests initialize/verify the administrator and ordinary test user.\npm.variables.set('fr02_admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('fr02_admin_password', pm.environment.get('admin_password') || 'Abcdefg1');\npm.variables.set('fr02_user_username', 'fr02user');\npm.variables.set('fr02_user_password', 'Abcdefg1');\npm.environment.unset('user_token');"
+    language: text/javascript
+  - type: afterResponse
+    code: "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Operation succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\npm.test('Expected account logged in', function () {\n    pm.expect(pm.response.json().username).to.eql(pm.variables.get('fr02_user_username'));\n});\npm.test('Session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.match(/token=[a-f0-9]{32}/);\n});\nif (pm.response.code === 200) {\n    var match = (pm.response.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);\n    if (match) pm.environment.set('user_token', match[1]);\n}"
+    language: text/javascript
+order: 7000

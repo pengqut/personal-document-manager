@@ -52,7 +52,7 @@ on:
       app2_subnet:
         description: Subnet Name tag or ID for App-2 (another Availability Zone)
         required: true
-        default: SUBNET5
+        default: aws-controltower-PublicSubnet2
         type: string
       security_group:
         description: Security group name or ID for both servers and the load balancer

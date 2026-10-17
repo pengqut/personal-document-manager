@@ -41,7 +41,13 @@ if [ -n "${KEY_NAME:-}" ]; then
   aws ec2 delete-key-pair --key-name "$KEY_NAME" || true
 fi
 
-# The VPC and its security groups belong to the student lab. Leave them.
+# Remove only the inbound rules this run added. Leave the group itself.
+if [ "${OPENED_22:-}" = "1" ] && [ -n "${ALB_SG:-}" ]; then
+  aws ec2 revoke-security-group-ingress --group-id "$ALB_SG" --protocol tcp --port 22 --cidr 0.0.0.0/0 || true
+fi
+if [ "${OPENED_80:-}" = "1" ] && [ -n "${ALB_SG:-}" ]; then
+  aws ec2 revoke-security-group-ingress --group-id "$ALB_SG" --protocol tcp --port 80 --cidr 0.0.0.0/0 || true
+fi
 
 rm -f "${GITHUB_WORKSPACE}/pdm-lab.pem" "$STATE"
 echo "Lab resources for this run have been deleted."

@@ -11,8 +11,8 @@ name: Deploy
 # port 80. Assignment 1 is not touched.
 #
 # The security_group input is attached to both servers and the load
-# balancer. The job adds HTTP 80 from the internet and PostgreSQL 5001 from
-# the same group only when no existing rule already allows them.
+# balancer. The job adds PostgreSQL 5001 from the same group when no existing
+# rule allows it, and SSH 22 and HTTP 80 from the runner's IP for the job.
 #
 # The load balancer pdm-alb forwards HTTP 80 to the target group pdm-tg.
 # Health check: GET /api/admin/setup-status.
@@ -236,10 +236,14 @@ jobs:
               --query 'sort_by(Datapoints,&Timestamp)[].[Timestamp,Average,Maximum]' --output table
           done
 
-      - name: Remove the runner's SSH rule
-        if: always() && env.RUNNER_SSH_RULE == '1'
+      - name: Remove the runner's rules
+        if: always() && (env.RUNNER_SSH_RULE == '1' || env.RUNNER_HTTP_RULE == '1')
         run: |
-          aws ec2 revoke-security-group-ingress --group-id "$PDM_SG" \
-            --protocol tcp --port 22 --cidr "$RUNNER_CIDR" >/dev/null \
-            && echo "Removed SSH access for ${RUNNER_CIDR}." \
-            || echo "Could not remove SSH access for ${RUNNER_CIDR} on ${PDM_SG}. Remove it in the console."
+          for port in 22 80; do
+            if [ "$port" = 22 ] && [ "${RUNNER_SSH_RULE:-}" != 1 ]; then continue; fi
+            if [ "$port" = 80 ] && [ "${RUNNER_HTTP_RULE:-}" != 1 ]; then continue; fi
+            aws ec2 revoke-security-group-ingress --group-id "$PDM_SG" \
+              --protocol tcp --port "$port" --cidr "$RUNNER_CIDR" >/dev/null \
+              && echo "Removed port ${port} access for ${RUNNER_CIDR}." \
+              || echo "Could not remove port ${port} access for ${RUNNER_CIDR} on ${PDM_SG}. Remove it in the console."
+          done

@@ -8,7 +8,8 @@ name: Deploy
 # port 5001. App-2 is found by its Name tag, or launched in app2_subnet
 # (another Availability Zone) with the same image, size, key pair, and
 # security group. Both run the app in /home/ubuntu/A2-PDM under PM2 on
-# port 80. Assignment 1 is not touched.
+# port 80. App-1 also keeps Assignment 1 (tag v1.1) in /home/ubuntu/A1-PDM
+# under PM2 as pdm-a1 on port 8080, with its own SQLite database.
 #
 # The security_group input is attached to both servers and the load
 # balancer. The job adds PostgreSQL 5001 from the same group when no existing
@@ -168,6 +169,11 @@ jobs:
         run: |
           args="$(printf '%q ' "$REPO_URL" "$GIT_SHA" "$APP1_NAME" db "$VPC_CIDR")"
           "$RUNNER_TEMP/remote.sh" "$APP1_IP" "bash -s -- ${args}" < .github/scripts/server-deploy.sh
+
+      - name: Keep Assignment 1 on App-1
+        run: |
+          args="$(printf '%q ' "$REPO_URL" v1.1 8080)"
+          "$RUNNER_TEMP/remote.sh" "$APP1_IP" "bash -s -- ${args}" < .github/scripts/deploy-a1.sh
 
       - name: Install the app on App-2
         run: |

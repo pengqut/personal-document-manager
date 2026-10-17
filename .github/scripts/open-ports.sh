@@ -24,15 +24,29 @@ fi
 echo "Using security group ${SECURITY_GROUP} (${PDM_SG})."
 echo "PDM_SG=${PDM_SG}" >> "$GITHUB_ENV"
 
+instance_groups() {
+  aws ec2 describe-instances --instance-ids "$1" \
+    --query 'Reservations[0].Instances[0].SecurityGroups[].GroupId' --output text \
+    | tr '\t' '\n' | sort -u
+}
+
+# App-2 and the load balancer get the same groups as App-1, so traffic that
+# reaches App-1 through the class groups also reaches App-2.
+app1_groups="$( (instance_groups "$APP1_ID"; echo "$PDM_SG") | sort -u)"
+if [ "$(wc -l <<<"$app1_groups")" -gt 5 ]; then
+  echo "App-1 would have more than 5 security groups. Remove one from ${APP1_ID} in the console." >&2
+  exit 1
+fi
 for instance in "$APP1_ID" "$APP2_ID"; do
-  groups="$(aws ec2 describe-instances --instance-ids "$instance" \
-    --query 'Reservations[0].Instances[0].SecurityGroups[].GroupId' --output text)"
-  if ! grep -qw "$PDM_SG" <<<"$groups"; then
+  current="$(instance_groups "$instance")"
+  wanted="$( (echo "$current"; echo "$app1_groups") | sort -u)"
+  if [ "$current" != "$wanted" ]; then
     # shellcheck disable=SC2086
-    aws ec2 modify-instance-attribute --instance-id "$instance" --groups $groups "$PDM_SG"
-    echo "Attached ${PDM_SG} to ${instance}."
+    aws ec2 modify-instance-attribute --instance-id "$instance" --groups $wanted
+    echo "Security groups on ${instance}: $(echo $wanted)"
   fi
 done
+echo "ALB_SGS=$(echo $app1_groups)" >> "$GITHUB_ENV"
 
 runner_ip="$(curl -fsS https://checkip.amazonaws.com | tr -d '[:space:]')"
 echo "RUNNER_CIDR=${runner_ip}/32" >> "$GITHUB_ENV"

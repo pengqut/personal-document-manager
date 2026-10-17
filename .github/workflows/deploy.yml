@@ -1,17 +1,21 @@
 name: Deploy
 
-# Tests run first. The deploy job then installs the app on an EC2 instance
-# that already exists and keeps running after the job (it is not deleted).
+# Tests run first. The deploy job then updates two app servers behind an
+# Application Load Balancer and runs the load test. Nothing is deleted at the
+# end, so the servers stay up for screenshots and the demo.
 #
-# The job logs in over SSH with the instance's key pair, stored in the
-# repository secret EC2_SSH_PRIVATE_KEY. The student role cannot use
-# EC2 Instance Connect. The instance must run Ubuntu. The job adds the
-# runner's IP to the instance's security group on ports 22 and 80 and
-# removes those rules at the end.
+# App-1 is the existing instance (instance_id). It also hosts PostgreSQL on
+# port 5001, reachable only from the same security group. App-2 is found by
+# its Name tag, or launched in another Availability Zone with the same image,
+# size, key pair, and security group. Both run the app in /home/ubuntu/A2-PDM
+# under PM2 on port 80. Assignment 1 is not touched.
 #
-# On the instance: PostgreSQL on port 5001 (local connections only), the app
-# in /home/ubuntu/A2-PDM under PM2 on port 80. Assignment 1 is not touched.
+# The load balancer pdm-alb forwards HTTP 80 to the target group pdm-tg.
 # Health check: GET /api/admin/setup-status.
+#
+# The job logs in over SSH with the key pair in the repository secret
+# EC2_SSH_PRIVATE_KEY (the student role cannot use EC2 Instance Connect).
+# SSH from the runner's IP is allowed for the job and removed at the end.
 #
 # Academy credentials are temporary. Enter them on the Run workflow form.
 # Copy the access key, secret key, and session token from AWS Details.
@@ -32,12 +36,12 @@ on:
         required: true
         type: string
       aws_region:
-        description: Region of the EC2 instance
+        description: Region of the EC2 instances
         required: true
         default: ap-southeast-2
         type: string
       instance_id:
-        description: EC2 instance to deploy to
+        description: App-1 instance (also hosts PostgreSQL)
         required: true
         default: i-09e52d6ce18896af6
         type: string
@@ -77,16 +81,17 @@ jobs:
         run: python -m pytest -q -p no:cacheprovider
 
   deploy:
-    name: Deploy to EC2
+    name: Deploy behind the load balancer
     needs: test
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
       AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
       AWS_SESSION_TOKEN: ${{ inputs.aws_session_token }}
       AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
       INSTANCE_ID: ${{ inputs.instance_id }}
+      APP2_NAME: Group19-App2
       SSH_USER: ubuntu
       GIT_SHA: ${{ github.sha }}
       REPO_URL: https://github.com/${{ github.repository }}
@@ -103,62 +108,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Find the instance
-        run: |
-          state="$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
-            --query 'Reservations[0].Instances[0].State.Name' --output text)"
-          if [ "$state" = "stopped" ]; then
-            echo "Starting ${INSTANCE_ID}."
-            aws ec2 start-instances --instance-ids "$INSTANCE_ID" >/dev/null
-          fi
-          aws ec2 wait instance-status-ok --instance-ids "$INSTANCE_ID"
+      - name: Find App-1 and find or launch App-2
+        run: bash .github/scripts/find-servers.sh
 
-          read -r ip image name <<<"$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
-            --query 'Reservations[0].Instances[0].[PublicIpAddress,ImageId,Tags[?Key==`Name`]|[0].Value]' \
-            --output text)"
-          if [ -z "$ip" ] || [ "$ip" = "None" ]; then
-            echo "${INSTANCE_ID} has no public IPv4 address." >&2
-            exit 1
-          fi
-          image_name="$(aws ec2 describe-images --image-ids "$image" \
-            --query 'Images[0].Name' --output text 2>/dev/null || true)"
-          case "$image_name" in
-            *ubuntu*) ;;
-            *) echo "Image ${image} (${image_name}) does not look like Ubuntu. The scripts expect Ubuntu." ;;
-          esac
-          if [ -z "$name" ] || [ "$name" = "None" ]; then
-            name="$INSTANCE_ID"
-          fi
-          echo "Instance ${INSTANCE_ID} (${name}) at ${ip}"
-          {
-            echo "APP_IP=${ip}"
-            echo "APP_NAME=${name}"
-          } >> "$GITHUB_ENV"
-
-      - name: Let this runner reach the instance
-        run: |
-          runner_ip="$(curl -fsS https://checkip.amazonaws.com | tr -d '[:space:]')"
-          sg="$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
-            --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' --output text)"
-          echo "Runner ${runner_ip}, security group ${sg}"
-          {
-            echo "RUNNER_SG=${sg}"
-            echo "RUNNER_CIDR=${runner_ip}/32"
-          } >> "$GITHUB_ENV"
-          opened=""
-          for port in 22 80; do
-            if out="$(aws ec2 authorize-security-group-ingress --group-id "$sg" \
-                --ip-permissions "IpProtocol=tcp,FromPort=${port},ToPort=${port},IpRanges=[{CidrIp=${runner_ip}/32,Description=pdm-deploy-runner}]" 2>&1)"; then
-              echo "Allowed ${runner_ip} on port ${port} for this run."
-              opened="${opened:+${opened} }${port}"
-            elif grep -q InvalidPermission.Duplicate <<<"$out"; then
-              echo "Port ${port} already allows ${runner_ip}."
-            else
-              echo "Could not add a rule for port ${port}: ${out}"
-              echo "If the next step times out, set the SSH and HTTP inbound rules on ${sg} to Anywhere-IPv4 (0.0.0.0/0)."
-            fi
-          done
-          echo "OPENED_PORTS=${opened}" >> "$GITHUB_ENV"
+      - name: Security group rules
+        run: bash .github/scripts/open-ports.sh
 
       - name: Prepare the SSH key
         env:
@@ -172,37 +126,73 @@ jobs:
           cat > "$RUNNER_TEMP/remote.sh" <<'EOF'
           #!/usr/bin/env bash
           set -euo pipefail
+          host="$1"
+          shift
           exec ssh -i "${RUNNER_TEMP}/pdm_key" \
             -o StrictHostKeyChecking=accept-new \
             -o UserKnownHostsFile="${RUNNER_TEMP}/known_hosts" \
             -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=30 \
-            "${SSH_USER}@${APP_IP}" "$@"
+            "${SSH_USER}@${host}" "$@"
           EOF
           chmod +x "$RUNNER_TEMP/remote.sh"
-          "$RUNNER_TEMP/remote.sh" 'echo "Connected to $(hostname)"'
+          for host in "$APP1_IP" "$APP2_IP"; do
+            for try in 1 2 3 4 5 6; do
+              if "$RUNNER_TEMP/remote.sh" "$host" 'echo "Connected to $(hostname)"'; then
+                break
+              fi
+              if [ "$try" -eq 6 ]; then
+                echo "Cannot reach ${host} on port 22." >&2
+                exit 1
+              fi
+              sleep 10
+            done
+          done
 
-      - name: Install PostgreSQL and the app
+      - name: Install PostgreSQL and the app on App-1
         run: |
-          args="$(printf '%q ' "$REPO_URL" "$GIT_SHA" "$APP_NAME")"
-          "$RUNNER_TEMP/remote.sh" "bash -s -- ${args}" < .github/scripts/server-deploy.sh
+          args="$(printf '%q ' "$REPO_URL" "$GIT_SHA" "$APP1_NAME" db "$VPC_CIDR")"
+          "$RUNNER_TEMP/remote.sh" "$APP1_IP" "bash -s -- ${args}" < .github/scripts/server-deploy.sh
 
-      - name: PM2 status
-        run: '"$RUNNER_TEMP/remote.sh" sudo pm2 status'
-
-      - name: Check the public address
+      - name: Install the app on App-2
         run: |
-          echo "Open http://${APP_IP} in a browser."
-          curl --retry 10 --retry-delay 5 --retry-all-errors -sS -D - \
-            "http://${APP_IP}/api/admin/setup-status"
-          echo
+          password="$("$RUNNER_TEMP/remote.sh" "$APP1_IP" cat /home/ubuntu/A2-runtime/db.password)"
+          echo "::add-mask::${password}"
+          url="postgresql://pdm_user:${password}@${APP1_PRIVATE_IP}:5001/pdm_prod"
+          args="$(printf '%q ' "$REPO_URL" "$GIT_SHA" "$APP2_NAME" app)"
+          { printf 'export DATABASE_URL=%q\n' "$url"; cat .github/scripts/server-deploy.sh; } \
+            | "$RUNNER_TEMP/remote.sh" "$APP2_IP" "bash -s -- ${args}"
+
+      - name: PM2 status on both servers
+        run: |
+          echo "PM2 status on ${APP1_NAME} (${APP1_IP})"
+          "$RUNNER_TEMP/remote.sh" "$APP1_IP" sudo pm2 status
+          echo "PM2 status on ${APP2_NAME} (${APP2_IP})"
+          "$RUNNER_TEMP/remote.sh" "$APP2_IP" sudo pm2 status
+
+      - name: Load balancer
+        run: bash .github/scripts/ensure-alb.sh
+
+      - name: Requests through the load balancer
+        run: |
+          echo "${APP1_NAME}  http://${APP1_IP}"
+          echo "${APP2_NAME}  http://${APP2_IP}"
+          echo "Load balancer  http://${ALB_DNS}"
+          for n in $(seq 1 10); do
+            server="$(curl --retry 5 --retry-delay 3 --retry-all-errors -sS -o /dev/null -D - \
+              "http://${ALB_DNS}/api/admin/setup-status" | tr -d '\r' \
+              | awk -F': ' 'tolower($1)=="x-pdm-instance" {print $2}')"
+            echo "request ${n} answered by ${server}"
+          done
 
       - name: Run the two Apache Benchmark tests
         run: |
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apache2-utils
+          date -u +"Load test started %Y-%m-%d %H:%M:%S UTC"
           echo "Baseline: 100 requests, concurrency 5"
-          ab -n 100 -c 5 "http://${APP_IP}/api/admin/setup-status"
+          ab -n 100 -c 5 "http://${ALB_DNS}/api/admin/setup-status"
           echo "Higher load: 500 requests, concurrency 20"
-          ab -n 500 -c 20 "http://${APP_IP}/api/admin/setup-status"
+          ab -n 500 -c 20 "http://${ALB_DNS}/api/admin/setup-status"
+          date -u +"Load test finished %Y-%m-%d %H:%M:%S UTC"
 
       - name: Read CloudWatch CPU
         continue-on-error: true
@@ -211,18 +201,20 @@ jobs:
           sleep 180
           end="$(date -u +%Y-%m-%dT%H:%M:%S)"
           start="$(date -u -d '30 minutes ago' +%Y-%m-%dT%H:%M:%S)"
-          aws cloudwatch get-metric-statistics \
-            --namespace AWS/EC2 --metric-name CPUUtilization \
-            --dimensions "Name=InstanceId,Value=${INSTANCE_ID}" \
-            --start-time "$start" --end-time "$end" \
-            --period 60 --statistics Average Maximum
-
-      - name: Remove the runner's inbound rules
-        if: always() && env.OPENED_PORTS != ''
-        run: |
-          for port in $OPENED_PORTS; do
-            aws ec2 revoke-security-group-ingress --group-id "$RUNNER_SG" \
-              --protocol tcp --port "$port" --cidr "$RUNNER_CIDR" >/dev/null \
-              && echo "Removed ${RUNNER_CIDR} from port ${port}." \
-              || echo "Could not remove ${RUNNER_CIDR} from port ${port} on ${RUNNER_SG}. Remove it in the console."
+          for pair in "${APP1_ID}:${APP1_NAME}" "${APP2_ID}:${APP2_NAME}"; do
+            echo "CPU ${pair#*:} (${pair%%:*})"
+            aws cloudwatch get-metric-statistics \
+              --namespace AWS/EC2 --metric-name CPUUtilization \
+              --dimensions "Name=InstanceId,Value=${pair%%:*}" \
+              --start-time "$start" --end-time "$end" \
+              --period 60 --statistics Average Maximum \
+              --query 'sort_by(Datapoints,&Timestamp)[].[Timestamp,Average,Maximum]' --output table
           done
+
+      - name: Remove the runner's SSH rule
+        if: always() && env.RUNNER_SSH_RULE == '1'
+        run: |
+          aws ec2 revoke-security-group-ingress --group-id "$SG_ID" \
+            --protocol tcp --port 22 --cidr "$RUNNER_CIDR" >/dev/null \
+            && echo "Removed SSH access for ${RUNNER_CIDR}." \
+            || echo "Could not remove SSH access for ${RUNNER_CIDR} on ${SG_ID}. Remove it in the console."

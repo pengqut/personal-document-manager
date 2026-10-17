@@ -20,6 +20,13 @@ retry() {
   return 0
 }
 
+if [ -n "${API_ID:-}" ]; then
+  aws apigatewayv2 delete-api --api-id "$API_ID" || true
+fi
+if [ -n "${VPC_LINK_ID:-}" ]; then
+  aws apigatewayv2 delete-vpc-link --vpc-link-id "$VPC_LINK_ID" || true
+fi
+
 if [ -n "${ALB_ARN:-}" ]; then
   aws elbv2 delete-load-balancer --load-balancer-arn "$ALB_ARN" || true
   aws elbv2 wait load-balancers-deleted --load-balancer-arns "$ALB_ARN" || true

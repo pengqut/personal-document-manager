@@ -1,11 +1,13 @@
 name: Deploy
 
-# Tests run first. This run then creates the whole lab and deletes it
-# before the job ends, including when a later step fails.
+# Tests run first. This run launches the servers inside the VPC that
+# already exists in the student account, then deletes those servers before
+# the job ends. The student role cannot create a VPC, and this workflow
+# does not delete the lab network.
 #
-# Created for the run: a VPC, two subnets in different zones, one private
-# PostgreSQL instance on port 5001, two app instances with PM2, and an
-# internet-facing Application Load Balancer. Health check: GET /api/admin/setup-status.
+# Created for the run: one PostgreSQL instance on port 5001, two app
+# instances with PM2, their security groups, and an internet-facing
+# Application Load Balancer. Health check: GET /api/admin/setup-status.
 #
 # Academy credentials are temporary. Enter them on the Run workflow form.
 # Copy the access key, secret key, and session token from AWS Details.

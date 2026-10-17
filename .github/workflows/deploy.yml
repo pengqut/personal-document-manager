@@ -7,9 +7,10 @@ name: Deploy
 #
 # Created for the run: one PostgreSQL instance on port 5001, two app
 # instances with PM2, and an internet-facing Application Load Balancer.
-# The only security group in the lab is the default group. This run adds
-# inbound SSH and HTTP on that group, then removes those two rules at the
-# end. Health check: GET /api/admin/setup-status.
+# The student role cannot create a security group or add inbound rules.
+# Instances use the default group, install the app at boot, and can reach
+# each other. Port 80 stays closed to the internet.
+# Health check: GET /api/admin/setup-status.
 #
 # Academy credentials are temporary. Enter them on the Run workflow form.
 # Copy the access key, secret key, and session token from AWS Details.
@@ -90,6 +91,8 @@ jobs:
       AWS_SESSION_TOKEN: ${{ inputs.aws_session_token }}
       AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
       INSTANCE_TYPE: ${{ inputs.instance_type }}
+      GIT_SHA: ${{ github.sha }}
+      REPO_URL: https://github.com/${{ github.repository }}
 
     steps:
       - name: Hide the Academy credentials in the log
@@ -106,52 +109,6 @@ jobs:
       - name: Create the network, database, and both app servers
         run: bash .github/scripts/lab-up.sh
 
-      - name: Deploy the application with PM2
-        run: |
-          set -a
-          # shellcheck disable=SC1091
-          source pdm-lab.env
-          set +a
-          echo "::add-mask::${DB_PASSWORD}"
-          DATABASE_URL="postgresql://pdm_user:${DB_PASSWORD}@${DB_PRIVATE_IP}:5001/pdm_prod"
-          echo "::add-mask::${DATABASE_URL}"
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y rsync
-          ssh_base=(-i "${GITHUB_WORKSPACE}/pdm-lab.pem" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="${RUNNER_TEMP}/pdm-known-hosts")
-          for name in PDM-App-1 PDM-App-2; do
-            if [ "$name" = "PDM-App-1" ]; then
-              ip="$APP1_IP"
-            else
-              ip="$APP2_IP"
-            fi
-            echo "Deploying ${name} at ${ip}"
-            quoted_url="$(printf '%q' "$DATABASE_URL")"
-            quoted_name="$(printf '%q' "$name")"
-            ssh "${ssh_base[@]}" "ubuntu@${ip}" "mkdir -p /home/ubuntu/A2-PDM/.github/scripts"
-            rsync -az --delete \
-              --exclude '.git/' --exclude '.github/' --exclude '.venv/' \
-              --exclude '.env*' --exclude '*.db' --exclude 'uploads/' \
-              --exclude '__pycache__/' --exclude '.pytest_cache/' \
-              -e "ssh -i ${GITHUB_WORKSPACE}/pdm-lab.pem -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${RUNNER_TEMP}/pdm-known-hosts" \
-              ./ "ubuntu@${ip}:/home/ubuntu/A2-PDM/"
-            rsync -az \
-              -e "ssh -i ${GITHUB_WORKSPACE}/pdm-lab.pem -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${RUNNER_TEMP}/pdm-known-hosts" \
-              .github/scripts/deploy-app.sh \
-              "ubuntu@${ip}:/home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh"
-            ssh "${ssh_base[@]}" "ubuntu@${ip}" \
-              "chmod +x /home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh && DATABASE_URL=${quoted_url} PDM_INSTANCE_NAME=${quoted_name} bash /home/ubuntu/A2-PDM/.github/scripts/deploy-app.sh"
-          done
-
-      - name: Show PM2 status on both servers
-        run: |
-          # shellcheck disable=SC1091
-          source pdm-lab.env
-          ssh_base=(-i "${GITHUB_WORKSPACE}/pdm-lab.pem" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="${RUNNER_TEMP}/pdm-known-hosts")
-          echo "PDM-App-1 ${APP1_IP}"
-          ssh "${ssh_base[@]}" "ubuntu@${APP1_IP}" sudo pm2 status
-          echo "PDM-App-2 ${APP2_IP}"
-          ssh "${ssh_base[@]}" "ubuntu@${APP2_IP}" sudo pm2 status
-
       - name: Create the load balancer
         run: bash .github/scripts/lab-alb.sh
 
@@ -162,10 +119,11 @@ jobs:
           echo "PDM-App-1 http://${APP1_IP}"
           echo "PDM-App-2 http://${APP2_IP}"
           echo "Load balancer http://${ALB_DNS}"
-          echo "Both targets are healthy. Take the EC2, target group, load balancer, and browser screenshots now."
+          echo "Both targets are healthy. Take the EC2, target group, and load balancer screenshots now."
+          echo "The lab security group blocks HTTP from the internet, so a browser will not load these addresses."
           for n in 1 2 3 4 5 6; do
             echo "request ${n}"
-            curl --retry 5 --retry-delay 5 --retry-all-errors -sS -D - "http://${ALB_DNS}/api/admin/setup-status" -o /tmp/body.json
+            curl --retry 2 --retry-delay 3 --retry-all-errors -sS -D - "http://${ALB_DNS}/api/admin/setup-status" -o /tmp/body.json || true
             echo
           done
           minutes="${{ inputs.screenshot_minutes }}"
@@ -181,9 +139,9 @@ jobs:
           source pdm-lab.env
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apache2-utils
           echo "Baseline: 100 requests, concurrency 5"
-          ab -n 100 -c 5 "http://${ALB_DNS}/api/admin/setup-status"
+          ab -n 100 -c 5 "http://${ALB_DNS}/api/admin/setup-status" || echo "Apache Benchmark could not reach the load balancer."
           echo "Higher load: 500 requests, concurrency 20"
-          ab -n 500 -c 20 "http://${ALB_DNS}/api/admin/setup-status"
+          ab -n 500 -c 20 "http://${ALB_DNS}/api/admin/setup-status" || echo "Apache Benchmark could not reach the load balancer."
 
       - name: Read CloudWatch CPU for both app servers
         run: |

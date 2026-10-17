@@ -146,34 +146,8 @@ rm -f chosen-sgs.txt
 note ALB_SG "$ALB_SG"
 note DB_SG "$DB_SG"
 note APP_SGS "$APP_SGS"
-
-open_port() {
-  local group_id="$1" port="$2" flag="$3" err
-  err="$(mktemp)"
-  if aws ec2 authorize-security-group-ingress --group-id "$group_id" \
-      --protocol tcp --port "$port" --cidr 0.0.0.0/0 2>"$err"; then
-    note "$flag" 1
-    echo "Opened tcp ${port} from the internet on ${group_id}"
-  elif grep -q 'InvalidPermission.Duplicate' "$err"; then
-    echo "tcp ${port} is already allowed on ${group_id}"
-  else
-    cat "$err" >&2
-    rm -f "$err"
-    exit 1
-  fi
-  rm -f "$err"
-}
-
-if [ "${NEEDS_INGRESS}" = "1" ]; then
-  echo "The default group does not allow SSH or HTTP from the internet. Adding those two rules."
-  open_port "$ALB_SG" 22 OPENED_22
-  open_port "$ALB_SG" 80 OPENED_80
-fi
-
-KEY_NAME="pdm-${RUN}"
-aws ec2 create-key-pair --key-name "$KEY_NAME" --query KeyMaterial --output text > "${GITHUB_WORKSPACE}/pdm-lab.pem"
-chmod 600 "${GITHUB_WORKSPACE}/pdm-lab.pem"
-note KEY_NAME "$KEY_NAME"
+echo "The student role cannot open ports. Instances use ${ALB_SG} and reach each other through that group."
+echo "Inbound HTTP and SSH from the internet stay closed."
 
 USERDATA="$(mktemp)"
 python3 - "$USERDATA" "$DB_PASSWORD" "$VPC_CIDR" <<'PY'
@@ -212,25 +186,8 @@ DB_ID="$(aws ec2 run-instances --image-id "$AMI" --instance-type "$INSTANCE_TYPE
   --query 'Instances[0].InstanceId' --output text)"
 rm -f "$USERDATA"
 note DB_ID "$DB_ID"
-
-launch_app() {
-  local name="$1" subnet="$2" id_key="$3"
-  local instance_id
-  instance_id="$(aws ec2 run-instances --image-id "$AMI" --instance-type "$INSTANCE_TYPE" \
-    --key-name "$KEY_NAME" --subnet-id "$subnet" --security-group-ids "${APP_GROUP_IDS[@]}" \
-    --monitoring Enabled=true \
-    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=${name}},{Key=pdm-run,Value=${RUN}},{Key=pdm-role,Value=app}]" \
-    --query 'Instances[0].InstanceId' --output text)"
-  note "$id_key" "$instance_id"
-  echo "$instance_id"
-}
-
-IFS=',' read -r -a APP_GROUP_IDS <<< "$APP_SGS"
-APP1_ID="$(launch_app PDM-App-1 "$SUBNET1" APP1_ID)"
-APP2_ID="$(launch_app PDM-App-2 "$SUBNET2" APP2_ID)"
-
-echo "Waiting for PDM-DB, PDM-App-1 and PDM-App-2 to start."
-aws ec2 wait instance-running --instance-ids "$DB_ID" "$APP1_ID" "$APP2_ID"
+echo "Waiting for the database instance to start."
+aws ec2 wait instance-running --instance-ids "$DB_ID"
 
 read_ip() {
   aws ec2 describe-instances --instance-ids "$1" \
@@ -251,8 +208,6 @@ wait_public_ip() {
   return 1
 }
 note DB_PRIVATE_IP "$(read_ip "$DB_ID" PrivateIpAddress)"
-note APP1_IP "$(wait_public_ip "$APP1_ID")"
-note APP2_IP "$(wait_public_ip "$APP2_ID")"
 
 echo "Waiting for PostgreSQL on port 5001."
 ready=0
@@ -271,24 +226,89 @@ fi
 
 # shellcheck disable=SC1090
 source "$STATE"
-ssh_base=(-i "${GITHUB_WORKSPACE}/pdm-lab.pem" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="${RUNNER_TEMP}/pdm-known-hosts" -o ConnectTimeout=8)
-for ip in "$APP1_IP" "$APP2_IP"; do
-  echo "Waiting for SSH on ${ip}."
-  up=0
-  for try in $(seq 1 30); do
-    if ssh "${ssh_base[@]}" "ubuntu@${ip}" true; then
-      up=1
+: "${GIT_SHA:?GIT_SHA is required}"
+: "${REPO_URL:?REPO_URL is required}"
+
+launch_app() {
+  local name="$1" subnet="$2" id_key="$3" userdata instance_id
+  userdata="$(mktemp)"
+  python3 - "$userdata" "$name" "$DB_PRIVATE_IP" "$DB_PASSWORD" "$REPO_URL" "$GIT_SHA" <<'PY'
+import sys
+path, name, db_ip, password, repo_url, git_sha = sys.argv[1:]
+script = r"""#!/bin/bash
+set -eu
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y git
+rm -rf /home/ubuntu/A2-PDM
+git clone --depth 1 REPO_URL_TOKEN /home/ubuntu/A2-PDM
+cd /home/ubuntu/A2-PDM
+git fetch --depth 1 origin GIT_SHA_TOKEN
+git checkout --detach FETCH_HEAD
+export DATABASE_URL='postgresql://pdm_user:PASSWORD_TOKEN@DB_IP_TOKEN:5001/pdm_prod'
+export PDM_INSTANCE_NAME='NAME_TOKEN'
+bash .github/scripts/deploy-app.sh
+echo PM2-STATUS-BEGIN
+sudo pm2 status
+echo PM2-STATUS-END
+echo "PDM-APP-$(printf READY)"
+"""
+replacements = {
+    "REPO_URL_TOKEN": repo_url,
+    "GIT_SHA_TOKEN": git_sha,
+    "PASSWORD_TOKEN": password,
+    "DB_IP_TOKEN": db_ip,
+    "NAME_TOKEN": name,
+}
+for key, value in replacements.items():
+    script = script.replace(key, value)
+open(path, "w", encoding="utf-8").write(script)
+PY
+  instance_id="$(aws ec2 run-instances --image-id "$AMI" --instance-type "$INSTANCE_TYPE" \
+    --subnet-id "$subnet" --security-group-ids "$APP_SG" --associate-public-ip-address \
+    --user-data "file://${userdata}" --monitoring Enabled=true \
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=${name}},{Key=pdm-run,Value=${RUN}},{Key=pdm-role,Value=app}]" \
+    --query 'Instances[0].InstanceId' --output text)"
+  rm -f "$userdata"
+  note "$id_key" "$instance_id"
+  echo "$instance_id"
+}
+
+# APP_SG is the single group shared with the database. APP_SGS may list one id.
+APP_SG="${APP_SGS%%,*}"
+APP1_ID="$(launch_app PDM-App-1 "$SUBNET1" APP1_ID)"
+APP2_ID="$(launch_app PDM-App-2 "$SUBNET2" APP2_ID)"
+echo "Waiting for both application instances to start."
+aws ec2 wait instance-running --instance-ids "$APP1_ID" "$APP2_ID"
+note APP1_IP "$(wait_public_ip "$APP1_ID")"
+note APP2_IP "$(wait_public_ip "$APP2_ID")"
+
+show_pm2() {
+  local instance_id="$1" name="$2" output="" try ready=0
+  echo "Waiting for ${name} to finish installing."
+  for try in $(seq 1 40); do
+    output="$(aws ec2 get-console-output --instance-id "$instance_id" --latest --query Output --output text 2>/dev/null || true)"
+    if printf '%s' "$output" | grep -q 'PDM-APP-READY'; then
+      ready=1
       break
     fi
-    sleep 10
+    sleep 15
   done
-  if [ "$up" -ne 1 ]; then
-    echo "SSH to ${ip} did not open." >&2
+  if [ "$ready" -ne 1 ]; then
+    echo "${name} did not finish installing." >&2
     exit 1
   fi
-done
+  echo "PM2 status for ${name}"
+  printf '%s\n' "$output" | awk '/PM2-STATUS-BEGIN/{flag=1; next} /PM2-STATUS-END/{flag=0} flag'
+}
+
+# shellcheck disable=SC1090
+source "$STATE"
+show_pm2 "$APP1_ID" "PDM-App-1"
+show_pm2 "$APP2_ID" "PDM-App-2"
 
 echo "Lab instances are up."
 echo "PDM-App-1 ${APP1_IP}"
 echo "PDM-App-2 ${APP2_IP}"
 echo "PDM-DB ${DB_PRIVATE_IP} port 5001"
+echo "Port 80 is not open to the internet. Browser requests to these addresses will not connect."

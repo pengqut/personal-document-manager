@@ -36,6 +36,11 @@ else
   echo "Found load balancer ${ALB_NAME}."
 fi
 aws elbv2 wait load-balancer-available --load-balancer-arns "$ALB_ARN"
+if [ -n "${ALB_SGS:-}" ]; then
+  # shellcheck disable=SC2086
+  aws elbv2 set-security-groups --load-balancer-arn "$ALB_ARN" --security-groups $ALB_SGS >/dev/null
+  echo "Load balancer security groups: ${ALB_SGS}"
+fi
 
 listeners="$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" \
   --query 'length(Listeners[?Port==`80`])' --output text)"

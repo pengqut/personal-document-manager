@@ -17,8 +17,8 @@ if [[ -z "${PDM_INSTANCE_NAME:-}" ]]; then
   exit 1
 fi
 
-sudo apt-get update
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv python3-pip nodejs npm
+sudo apt-get -o DPkg::Lock::Timeout=300 update
+sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y python3-venv python3-pip nodejs npm
 if ! command -v pm2 >/dev/null 2>&1; then
   sudo npm install -g pm2
 fi

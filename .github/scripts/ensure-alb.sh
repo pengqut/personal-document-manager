@@ -29,7 +29,7 @@ ALB_ARN="$(aws elbv2 describe-load-balancers --names "$ALB_NAME" \
 if [ -z "$ALB_ARN" ] || [ "$ALB_ARN" = "None" ]; then
   ALB_ARN="$(aws elbv2 create-load-balancer --name "$ALB_NAME" --type application \
     --scheme internet-facing --ip-address-type ipv4 \
-    --subnets "$SUBNET1" "$SUBNET2" --security-groups "$SG_ID" \
+    --subnets "$SUBNET1" "$SUBNET2" --security-groups "${PDM_SG:-$SG_ID}" \
     --query 'LoadBalancers[0].LoadBalancerArn' --output text)"
   echo "Created load balancer ${ALB_NAME}."
 else

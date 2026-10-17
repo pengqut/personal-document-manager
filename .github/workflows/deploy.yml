@@ -10,9 +10,9 @@ name: Deploy
 # security group. Both run the app in /home/ubuntu/A2-PDM under PM2 on
 # port 80. Assignment 1 is not touched.
 #
-# The class security group can be full, so the job adds its own group,
-# pdm-group19, to both servers and the load balancer: HTTP 80 from the
-# internet and PostgreSQL 5001 from the same group only.
+# The security_group input is attached to both servers and the load
+# balancer. The job adds HTTP 80 from the internet and PostgreSQL 5001 from
+# the same group only when no existing rule already allows them.
 #
 # The load balancer pdm-alb forwards HTTP 80 to the target group pdm-tg.
 # Health check: GET /api/admin/setup-status.
@@ -53,6 +53,11 @@ on:
         description: Subnet Name tag or ID for App-2 (another Availability Zone)
         required: true
         default: SUBNET5
+        type: string
+      security_group:
+        description: Security group name or ID for both servers and the load balancer
+        required: true
+        default: student-allowed-sg-5
         type: string
 
 permissions:
@@ -102,6 +107,7 @@ jobs:
       INSTANCE_ID: ${{ inputs.instance_id }}
       APP2_NAME: Group19-App2
       APP2_SUBNET: ${{ inputs.app2_subnet }}
+      SECURITY_GROUP: ${{ inputs.security_group }}
       SSH_USER: ubuntu
       GIT_SHA: ${{ github.sha }}
       REPO_URL: https://github.com/${{ github.repository }}

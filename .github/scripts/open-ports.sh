@@ -2,9 +2,10 @@
 # Attaches SECURITY_GROUP (a group name or ID in the VPC) to both app servers
 # alongside their existing groups, and uses it for the load balancer.
 # Needed inbound access, added only when no existing rule already covers it:
-#   HTTP 80 from the internet, so browsers and the load balancer can connect.
 #   PostgreSQL 5001 between the servers (same group or the VPC range).
-#   SSH 22 from this runner, removed again at the end of the job.
+#   SSH 22 and HTTP 80 from this runner, removed again at the end of the job.
+# Rules open to 0.0.0.0/0 are removed automatically in this lab, so browser
+# access comes from the rules for specific IPs added in the console.
 set -euo pipefail
 
 WORK="$(mktemp -d)"
@@ -104,11 +105,11 @@ elif add_rule "SSH 22 from runner ${runner_ip}" \
   echo "RUNNER_SSH_RULE=1" >> "$GITHUB_ENV"
 fi
 
-if covered 80 world; then
-  echo "HTTP 80 is already open to the internet."
-else
-  add_rule "HTTP 80 from 0.0.0.0/0" \
-    "IpProtocol=tcp,FromPort=80,ToPort=80,IpRanges=[{CidrIp=0.0.0.0/0,Description=pdm-http}]" || true
+if covered 80 runner; then
+  echo "HTTP 80 is already open to the runner."
+elif add_rule "HTTP 80 from runner ${runner_ip}" \
+    "IpProtocol=tcp,FromPort=80,ToPort=80,IpRanges=[{CidrIp=${runner_ip}/32,Description=pdm-deploy-runner}]"; then
+  echo "RUNNER_HTTP_RULE=1" >> "$GITHUB_ENV"
 fi
 
 if covered 5001 internal; then

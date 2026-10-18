@@ -245,12 +245,12 @@ class Database:
 
             @event.listens_for(engine, 'connect')
             def configure_sqlite(dbapi_connection, connection_record):
-                cursor = dbapi_connection.cursor()
-                cursor.execute('PRAGMA foreign_keys = ON')
-                cursor.execute(
+                db_pointer = dbapi_connection.cursor()
+                db_pointer.execute('PRAGMA foreign_keys = ON')
+                db_pointer.execute(
                     f'PRAGMA busy_timeout = {SQLITE_TIMEOUT_SECONDS * 1000}'
                 )
-                cursor.close()
+                db_pointer.close()
 
             @event.listens_for(engine, 'begin')
             def begin_transaction(conn):

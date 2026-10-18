@@ -1,0 +1,20 @@
+# Development/test database only. Run after Prepare Administrator.
+# Creates/reuses fr02user after administrator preparation; never resets accounts.
+$kind: http-request
+url: "{{base_url}}/api/register"
+method: POST
+body:
+  type: urlencoded
+  content:
+    - key: username
+      value: "{{fr02_user_username}}"
+    - key: password
+      value: "{{fr02_user_password}}"
+scripts:
+  - type: beforeRequest
+    code: "// Development/test database only; run Prepare Administrator first.\n// This dedicated account is kept for subsequent runs.\npm.variables.set('fr02_user_username', 'fr02user');\npm.variables.set('fr02_user_password', 'Abcdefg1');"
+    language: text/javascript
+  - type: afterResponse
+    code: "pm.test('Test user is created or already exists', function () {\n    pm.expect([200, 409]).to.include(pm.response.code);\n    if (pm.response.code === 200) {\n        pm.expect(pm.response.json().ok).to.eql(true);\n    } else {\n        pm.expect(pm.response.json().error).to.eql('Username already exists.');\n    }\n});\n\n// A duplicate response alone does not prove the account is usable.\nif (pm.response.code === 200 || pm.response.code === 409) {\n    pm.sendRequest({\n        url: pm.variables.replaceIn('{{base_url}}/api/login'),\n        method: 'POST',\n        body: {\n            mode: 'urlencoded',\n            urlencoded: [\n                {key: 'username', value: pm.variables.get('fr02_user_username')},\n                {key: 'password', value: pm.variables.get('fr02_user_password')}\n            ]\n        }\n    }, function (error, result) {\n        pm.test('Prepared user is enabled and has the expected password', function () {\n            pm.expect(error).to.eql(null);\n            pm.expect(result.code).to.eql(200);\n            pm.expect(result.json().username).to.eql(pm.variables.get('fr02_user_username'));\n        });\n        if (error || !result || result.code !== 200) return;\n        var match = (result.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);\n        pm.test('Preparation login returns a session', function () {\n            pm.expect(Boolean(match)).to.eql(true);\n        });\n        if (!match) return;\n        pm.sendRequest({\n            url: pm.variables.replaceIn('{{base_url}}/api/logout'),\n            method: 'POST',\n            header: {Cookie: 'token=' + match[1]}\n        }, function (logoutError, logoutResult) {\n            pm.test('Preparation session is cleared', function () {\n                pm.expect(logoutError).to.eql(null);\n                pm.expect(logoutResult.code).to.eql(200);\n                pm.expect(logoutResult.json().ok).to.eql(true);\n            });\n        });\n    });\n}"
+    language: text/javascript
+order: 500

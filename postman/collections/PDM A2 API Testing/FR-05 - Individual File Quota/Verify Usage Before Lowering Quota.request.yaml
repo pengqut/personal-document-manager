@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{base_url}}/api/limits"
+method: GET
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Two files exist before lowering quota\", function () {\r
+
+      \    pm.expect(response.used).to.eql(2);\r
+
+      \    pm.expect(response.user_file_limit).to.eql(3);\r
+
+      });"
+    language: text/javascript
+order: 16518

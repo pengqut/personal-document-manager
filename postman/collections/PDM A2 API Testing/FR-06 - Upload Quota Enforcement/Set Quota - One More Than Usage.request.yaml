@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/api/admin/users/{{user_id}}/quota"
+method: POST
+headers:
+  Content-Type: application/json
+  Cookie: token={{admin_token}}
+body:
+  type: json
+  content: |-
+    {
+      "file_quota": 1
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    language: text/javascript
+order: 5000

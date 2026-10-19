@@ -2,14 +2,11 @@ $kind: http-request
 url: '{{base_url}}/api/files/999999999/category'
 method: POST
 body:
-  type: raw
+  type: json
   content: |-
     {
       "category": "image"
     }
-  options:
-    raw:
-      language: json
 scripts:
 - type: afterResponse
   code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Missing file is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"

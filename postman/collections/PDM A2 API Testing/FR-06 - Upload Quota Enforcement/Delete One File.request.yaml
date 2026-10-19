@@ -1,0 +1,13 @@
+$kind: http-request
+url: '{{base_url}}/api/files/{{file_id}}/delete'
+method: POST
+scripts:
+- type: afterResponse
+  code: 'let data = pm.response.json();
+
+    pm.test(''Status code is 200'', function () { pm.response.to.have.status(200);
+    });
+
+    pm.test(''Delete succeeds'', function () { pm.expect(data.ok).to.eql(true); });'
+  language: text/javascript
+order: 26000

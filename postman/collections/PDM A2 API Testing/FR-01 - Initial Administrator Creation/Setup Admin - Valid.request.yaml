@@ -2,15 +2,12 @@ $kind: http-request
 url: '{{base_url}}/api/admin/setup'
 method: POST
 body:
-  type: raw
+  type: json
   content: |-
     {
       "username": "admin001",
       "password": "Abcdefg1"
     }
-  options:
-    raw:
-      language: json
 scripts:
 - type: beforeRequest
   code: |-

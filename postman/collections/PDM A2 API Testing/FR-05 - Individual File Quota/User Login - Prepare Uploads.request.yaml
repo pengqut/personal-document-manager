@@ -1,0 +1,45 @@
+$kind: http-request
+url: "{{base_url}}/api/login"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"username\": \"{{user_username}}\",\r
+
+    \  \"password\": \"{{user_password}}\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"User login succeeds\", function () {\r
+
+      \    pm.expect(response.ok).to.eql(true);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Correct user is logged in\", function () {\r
+
+      \    pm.expect(response.username).to.eql(\r
+
+      \        pm.environment.get(\"user_username\")\r
+
+      \    );\r
+
+      });"
+    language: text/javascript
+order: 14582

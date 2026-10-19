@@ -2,14 +2,11 @@ $kind: http-request
 url: '{{base_url}}/api/files/{{test_file_id}}/category'
 method: POST
 body:
-  type: raw
+  type: json
   content: |-
     {
       "category": "random"
     }
-  options:
-    raw:
-      language: json
 scripts:
 - type: afterResponse
   code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 400\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Invalid category is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"Not a valid category.\");\r\n});"

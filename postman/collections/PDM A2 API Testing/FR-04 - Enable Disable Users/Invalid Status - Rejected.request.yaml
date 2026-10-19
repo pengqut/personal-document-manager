@@ -1,4 +1,24 @@
 $kind: http-request
-url: ""
-method: GET
+url: '{{base_url}}/api/admin/users/{{user_id}}/status'
+method: POST
+headers:
+- key: Content-Type
+  value: 'application/json'
+- key: Cookie
+  value: 'token={{admin_token}}'
+body:
+  type: json
+  content: |-
+    {
+      "enabled": "maybe"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 400', function () { pm.response.to.have.status(400); });
+    pm.test('Invalid status is rejected', function () {
+        pm.expect(response.error).to.eql('Invalid enabled value.');
+    });
+  language: text/javascript
 order: 7000

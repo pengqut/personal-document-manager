@@ -1,75 +1,71 @@
 $kind: http-request
-url: '{{base_url}}/api/register'
+url: "{{base_url}}/api/register"
 method: POST
 body:
-  type: raw
+  type: json
   content: |-
     {
-      "username": "{{fr02_user_username}}",
-      "password": "{{fr02_user_password}}"
+      "username": "{{user_username}}",
+      "password": "{{user_password}}"
     }
-  options:
-    raw:
-      language: json
 scripts:
-- type: beforeRequest
-  code: |-
-    // Development/test database only; run Prepare Administrator first.
-    // This dedicated account is kept for subsequent runs.
-    pm.variables.set('fr02_user_username', 'fr02user');
-    pm.variables.set('fr02_user_password', 'Abcdefg1');
-  language: text/javascript
-- type: afterResponse
-  code: |-
-    pm.test('Test user is created or already exists', function () {
-        pm.expect([200, 409]).to.include(pm.response.code);
-        if (pm.response.code === 200) {
-            pm.expect(pm.response.json().ok).to.eql(true);
-        } else {
-            pm.expect(pm.response.json().error).to.eql('Username already exists.');
-        }
-    });
+  - type: beforeRequest
+    code: |-
+      // Development/test database only; run Prepare Administrator first.
+      // This dedicated account is kept for subsequent runs.
+      pm.variables.set('user_username', 'fr02user');
+      pm.variables.set('user_password', 'Abcdefg1');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Test user is created or already exists', function () {
+          pm.expect([200, 409]).to.include(pm.response.code);
+          if (pm.response.code === 200) {
+              pm.expect(pm.response.json().ok).to.eql(true);
+          } else {
+              pm.expect(pm.response.json().error).to.eql('Username already exists.');
+          }
+      });
 
-    // A duplicate response alone does not prove the account is usable.
-    if (pm.response.code === 200 || pm.response.code === 409) {
-        pm.sendRequest({
-            url: pm.variables.replaceIn('{{base_url}}/api/login'),
-            method: 'POST',
-            header: {'Content-Type': 'application/json'},
-            body: {
-                mode: 'raw',
-                raw: JSON.stringify({
-                    username: pm.variables.get('fr02_user_username'),
-                    password: pm.variables.get('fr02_user_password')
-                })
-            }
-        }, function (error, result) {
-            pm.test('Prepared user is enabled and has the expected password', function () {
-                pm.expect(error).to.eql(null);
-                pm.expect(result.code).to.eql(200);
-                pm.expect(result.json().username).to.eql(pm.variables.get('fr02_user_username'));
-            });
-            if (error || !result || result.code !== 200) return;
-            var match = (result.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);
-            pm.test('Preparation login returns a session', function () {
-                pm.expect(Boolean(match)).to.eql(true);
-            });
-            if (!match) return;
-            pm.sendRequest({
-                url: pm.variables.replaceIn('{{base_url}}/api/logout'),
-                method: 'POST',
-                header: {Cookie: 'token=' + match[1]}
-            }, function (logoutError, logoutResult) {
-                pm.test('Preparation session is cleared', function () {
-                    pm.expect(logoutError).to.eql(null);
-                    pm.expect(logoutResult.code).to.eql(200);
-                    pm.expect(logoutResult.json().ok).to.eql(true);
-                });
-            });
-        });
-    }
-  language: text/javascript
+      // A duplicate response alone does not prove the account is usable.
+      if (pm.response.code === 200 || pm.response.code === 409) {
+          pm.sendRequest({
+              url: pm.variables.replaceIn('{{base_url}}/api/login'),
+              method: 'POST',
+              header: {'Content-Type': 'application/json'},
+              body: {
+                  mode: 'raw',
+                  raw: JSON.stringify({
+                      username: pm.variables.get('user_username'),
+                      password: pm.variables.get('user_password')
+                  })
+              }
+          }, function (error, result) {
+              pm.test('Prepared user is enabled and has the expected password', function () {
+                  pm.expect(error).to.eql(null);
+                  pm.expect(result.code).to.eql(200);
+                  pm.expect(result.json().username).to.eql(pm.variables.get('user_username'));
+              });
+              if (error || !result || result.code !== 200) return;
+              var match = (result.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);
+              pm.test('Preparation login returns a session', function () {
+                  pm.expect(Boolean(match)).to.eql(true);
+              });
+              if (!match) return;
+              pm.sendRequest({
+                  url: pm.variables.replaceIn('{{base_url}}/api/logout'),
+                  method: 'POST',
+                  header: {Cookie: 'token=' + match[1]}
+              }, function (logoutError, logoutResult) {
+                  pm.test('Preparation session is cleared', function () {
+                      pm.expect(logoutError).to.eql(null);
+                      pm.expect(logoutResult.code).to.eql(200);
+                      pm.expect(logoutResult.json().ok).to.eql(true);
+                  });
+              });
+          });
+      }
+    language: text/javascript
 order: 500
 headers:
-- key: Content-Type
-  value: application/json
+  Content-Type: application/json

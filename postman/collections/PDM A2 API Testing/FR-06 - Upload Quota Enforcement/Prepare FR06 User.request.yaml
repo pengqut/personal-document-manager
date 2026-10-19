@@ -1,0 +1,32 @@
+$kind: http-request
+url: '{{base_url}}/api/register'
+method: POST
+headers:
+- key: Content-Type
+  value: application/json
+body:
+  type: json
+  content: "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\
+    \n}"
+scripts:
+- type: beforeRequest
+  code: 'let suffix = Date.now().toString().slice(-8);
+
+    pm.environment.set(''user_username'', ''u'' + suffix);
+
+    pm.environment.set(''user_password'', ''Abcdefg1'');
+
+    pm.environment.set(''user_id'', '''');
+
+    pm.environment.set(''file_id'', '''');'
+  language: text/javascript
+- type: afterResponse
+  code: 'let data = pm.response.json();
+
+    pm.test(''Status code is 200'', function () { pm.response.to.have.status(200);
+    });
+
+    pm.test(''FR06 user is created'', function () { pm.expect(data.ok).to.eql(true);
+    });'
+  language: text/javascript
+order: 2000

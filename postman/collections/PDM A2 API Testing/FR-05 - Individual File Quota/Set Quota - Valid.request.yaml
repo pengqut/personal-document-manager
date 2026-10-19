@@ -2,21 +2,24 @@ $kind: http-request
 url: '{{base_url}}/api/admin/users/{{user_id}}/quota'
 method: POST
 headers:
-- key: Cookie
-  value: token={{admin_token}}
 - key: Content-Type
-  value: application/json
+  value: 'application/json'
+- key: Cookie
+  value: 'token={{admin_token}}'
 body:
-  type: raw
+  type: json
   content: |-
     {
       "file_quota": "5"
     }
-  options:
-    raw:
-      language: json
 scripts:
 - type: afterResponse
-  code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Quota is updated\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n    pm.expect(response.file_quota).to.eql(5);\r\n});"
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    pm.test('Expected quota result is returned', function () {
+        pm.expect(response.ok).to.eql(true);
+        pm.expect(response.file_quota).to.eql(5);
+    });
   language: text/javascript
-order: 1000
+order: 4000

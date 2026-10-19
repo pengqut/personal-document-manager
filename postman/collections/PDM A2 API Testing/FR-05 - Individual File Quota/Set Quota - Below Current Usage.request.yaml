@@ -1,22 +1,23 @@
 $kind: http-request
-url: '{{base_url}}/api/admin/users/{{user_id}}/quota'
+url: "{{base_url}}/api/admin/users/{{user_id}}/quota"
 method: POST
 headers:
-- key: Cookie
-  value: token={{admin_token}}
-- key: Content-Type
-  value: application/json
+  Content-Type: application/json
+  Cookie: token={{admin_token}}
 body:
-  type: raw
+  type: json
   content: |-
     {
       "file_quota": "1"
     }
-  options:
-    raw:
-      language: json
 scripts:
-- type: afterResponse
-  code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Quota can sit below the current file count\", function () {\r\n    pm.expect(response.file_quota).to.eql(1);\r\n    pm.expect(response.file_count).to.be.above(1);\r\n});"
-  language: text/javascript
-order: 3000
+  - type: afterResponse
+    code: |-
+      let response = pm.response.json();
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Quota can be below current usage without deleting files', function () {
+          pm.expect(response.file_quota).to.eql(1);
+          pm.expect(response.file_count).to.be.above(response.file_quota);
+      });
+    language: text/javascript
+order: 17000

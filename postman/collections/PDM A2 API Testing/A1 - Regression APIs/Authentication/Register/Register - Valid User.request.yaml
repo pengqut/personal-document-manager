@@ -2,15 +2,12 @@ $kind: http-request
 url: '{{base_url}}/api/register'
 method: POST
 body:
-  type: raw
+  type: json
   content: |-
     {
       "username": "A2Test01",
       "password": "Testpassword123"
     }
-  options:
-    raw:
-      language: json
 scripts:
 - type: afterResponse
   code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Registration is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});"

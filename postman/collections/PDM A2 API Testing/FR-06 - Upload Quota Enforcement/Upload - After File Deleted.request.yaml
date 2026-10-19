@@ -1,36 +1,20 @@
 $kind: http-request
-url: "{{base_url}}/api/upload"
+url: '{{base_url}}/api/upload'
 method: POST
-headers:
-  - key: Cookie
-    value: token={{user_token}}
 body:
   type: formdata
   content:
-    - type: file
-      key: file
-      src:
-        - postman/fixtures/quota_sample.txt
-      description: "A file was deleted so the count is under the quota again."
-      disabled: false
+  - type: file
+    key: file
+    src:
+    - /F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt
+    disabled: false
 scripts:
-  - type: afterResponse
-    code: "let response = pm.response.json();\r
+- type: afterResponse
+  code: 'let data = pm.response.json();
 
-      \r
+    pm.test(''Status code is 200'', function () { pm.response.to.have.status(200); });
 
-      pm.test(\"Status code is 200\", function () {\r
-
-      \    pm.response.to.have.status(200);\r
-
-      });\r
-
-      \r
-
-      pm.test(\"Upload is successful\", function () {\r
-
-      \    pm.expect(response.ok).to.eql(true);\r
-
-      });"
-    language: text/javascript
-order: 5000
+    pm.test(''Upload succeeds after delete frees a slot'', function () { pm.expect(data.ok).to.eql(true); });'
+  language: text/javascript
+order: 28000

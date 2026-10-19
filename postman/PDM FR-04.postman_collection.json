@@ -1,0 +1,442 @@
+{
+  "info": {
+    "_postman_id": "e61b39ba-b2ba-4fd5-bd37-b9bbf1da1195",
+    "name": "PDM FR-04",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "FR-04 Enable/Disable Normal Users. All data POST bodies use raw JSON. Disabling invalidates existing sessions; re-enabling permits a new login."
+  },
+  "item": [
+    {
+      "name": "Admin Login - Prepare",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/admin/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('Admin login status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Admin login succeeds', function () { pm.expect(response.ok).to.eql(true); });",
+              "var cookie = pm.response.headers.get('Set-Cookie') || '';",
+              "var match = cookie.match(/token=([^;]+)/);",
+              "pm.test('Admin session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });",
+              "if (match) pm.environment.set('admin_token', match[1]);"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "Find Normal User",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "token={{admin_token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/admin/users"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Users array is returned', function () { pm.expect(response.users).to.be.an('array'); });",
+              "var username = pm.environment.get('user_username');",
+              "var user = response.users.find(function (item) { return item.username === username; });",
+              "pm.test('Configured normal user is listed', function () { pm.expect(user).to.be.an('object'); });",
+              "if (user) pm.environment.set('user_id', String(user.id));"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "User Login - Prepare Existing Session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('User login status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('User login succeeds', function () { pm.expect(response.ok).to.eql(true); });",
+              "var cookie = pm.response.headers.get('Set-Cookie') || '';",
+              "var match = cookie.match(/token=([^;]+)/);",
+              "pm.test('User session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });",
+              "if (match) pm.environment.set('user_token', match[1]);"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "Disable Normal User - Success",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Cookie",
+            "value": "token={{admin_token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/admin/users/{{user_id}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"enabled\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('User is disabled', function () {",
+              "    pm.expect(response.ok).to.eql(true);",
+              "    pm.expect(response.enabled).to.eql(false);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "Disabled User - Existing Session Rejected",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Cookie",
+            "value": "token={{user_token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/me"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });",
+              "pm.test('Existing session is invalid after disable', function () {",
+              "    pm.expect(response.error).to.eql('Not logged in.');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "Disabled User - New Login Rejected",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });",
+              "pm.test('Disabled user cannot create a new session', function () {",
+              "    pm.expect(response.error).to.eql('Username or password is incorrect.');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "Invalid Status - Rejected",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Cookie",
+            "value": "token={{admin_token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/admin/users/{{user_id}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"enabled\": \"maybe\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+              "pm.test('Invalid enabled value is rejected', function () {",
+              "    pm.expect(response.error).to.eql('Invalid enabled value.');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "Missing User - Rejected",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Cookie",
+            "value": "token={{admin_token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/admin/users/999999/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"enabled\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
+              "pm.test('Missing user is rejected', function () {",
+              "    pm.expect(response.error).to.eql('User not found.');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "Re-enable User - Success",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Cookie",
+            "value": "token={{admin_token}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/admin/users/{{user_id}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"enabled\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('User is re-enabled', function () {",
+              "    pm.expect(response.ok).to.eql(true);",
+              "    pm.expect(response.enabled).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    },
+    {
+      "name": "User Login - After Re-enable",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/api/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.test('User login status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('User login succeeds', function () { pm.expect(response.ok).to.eql(true); });",
+              "var cookie = pm.response.headers.get('Set-Cookie') || '';",
+              "var match = cookie.match(/token=([^;]+)/);",
+              "pm.test('User session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });",
+              "if (match) pm.environment.set('user_token', match[1]);"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableCookies": true
+      }
+    }
+  ]
+}

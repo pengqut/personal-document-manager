@@ -1,0 +1,16 @@
+$kind: http-request
+url: '{{base_url}}/api/limits'
+method: GET
+headers:
+- key: Cookie
+  value: 'token={{user_token}}'
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    let used = Number(response.used);
+    pm.environment.set('used_start', String(used));
+    pm.environment.set('quota_one_more', String(used + 1));
+  language: text/javascript
+order: 4000

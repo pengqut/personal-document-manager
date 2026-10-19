@@ -2,15 +2,12 @@ $kind: http-request
 url: '{{base_url}}/api/login'
 method: POST
 body:
-  type: raw
+  type: json
   content: |-
     {
       "username": "A2Test02",
       "password": "Testpassword123"
     }
-  options:
-    raw:
-      language: json
 order: 1000
 headers:
 - key: Content-Type

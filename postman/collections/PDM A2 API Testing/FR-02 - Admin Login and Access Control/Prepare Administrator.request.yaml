@@ -1,84 +1,84 @@
 $kind: http-request
-url: '{{base_url}}/api/admin/setup-status'
+url: "{{base_url}}/api/admin/setup-status"
 method: GET
 scripts:
-- type: beforeRequest
-  code: |-
-    // Development/test database only. Existing administrator credentials are never reset.
-    pm.variables.set('fr02_admin_username', pm.environment.get('admin_username') || 'admin001');
-    pm.variables.set('fr02_admin_password', pm.environment.get('admin_password') || 'Abcdefg1');
-  language: text/javascript
-- type: afterResponse
-  code: |-
-    pm.test('Setup status is available', function () {
-        pm.response.to.have.status(200);
-        pm.expect(typeof pm.response.json().initialized).to.eql('boolean');
-    });
+  - type: beforeRequest
+    code: |-
+      // Development/test database only. Existing administrator credentials are never reset.
+      pm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');
+      pm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Setup status is available', function () {
+          pm.response.to.have.status(200);
+          pm.expect(typeof pm.response.json().initialized).to.eql('boolean');
+      });
 
-    function verifyAdministrator() {
-        pm.sendRequest({
-            url: pm.variables.replaceIn('{{base_url}}/api/admin/login'),
-            method: 'POST',
-            header: {'Content-Type': 'application/json'},
-            body: {
-                mode: 'raw',
-                raw: JSON.stringify({
-                    username: pm.variables.get('fr02_admin_username'),
-                    password: pm.variables.get('fr02_admin_password')
-                })
-            }
-        }, function (error, result) {
-            pm.test('Prepared administrator accepts the configured credentials', function () {
-                pm.expect(error).to.eql(null);
-                pm.expect(result.code).to.eql(200);
-                pm.expect(result.json().ok).to.eql(true);
-                pm.expect(result.json().username).to.eql(pm.variables.get('fr02_admin_username'));
-            });
-            if (error || !result || result.code !== 200) return;
-            var match = (result.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);
-            pm.test('Administrator preparation returns a session', function () {
-                pm.expect(Boolean(match)).to.eql(true);
-            });
-            if (!match) return;
-            pm.sendRequest({
-                url: pm.variables.replaceIn('{{base_url}}/api/logout'),
-                method: 'POST',
-                header: {Cookie: 'token=' + match[1]}
-            }, function (logoutError, logoutResult) {
-                pm.test('Administrator preparation session is cleared', function () {
-                    pm.expect(logoutError).to.eql(null);
-                    pm.expect(logoutResult.code).to.eql(200);
-                    pm.expect(logoutResult.json().ok).to.eql(true);
-                });
-            });
-        });
-    }
+      function verifyAdministrator() {
+          pm.sendRequest({
+              url: pm.variables.replaceIn('{{base_url}}/api/admin/login'),
+              method: 'POST',
+              header: {'Content-Type': 'application/json'},
+              body: {
+                  mode: 'raw',
+                  raw: JSON.stringify({
+                      username: pm.variables.get('admin_username'),
+                      password: pm.variables.get('admin_password')
+                  })
+              }
+          }, function (error, result) {
+              pm.test('Prepared administrator accepts the configured credentials', function () {
+                  pm.expect(error).to.eql(null);
+                  pm.expect(result.code).to.eql(200);
+                  pm.expect(result.json().ok).to.eql(true);
+                  pm.expect(result.json().username).to.eql(pm.variables.get('admin_username'));
+              });
+              if (error || !result || result.code !== 200) return;
+              var match = (result.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);
+              pm.test('Administrator preparation returns a session', function () {
+                  pm.expect(Boolean(match)).to.eql(true);
+              });
+              if (!match) return;
+              pm.sendRequest({
+                  url: pm.variables.replaceIn('{{base_url}}/api/logout'),
+                  method: 'POST',
+                  header: {Cookie: 'token=' + match[1]}
+              }, function (logoutError, logoutResult) {
+                  pm.test('Administrator preparation session is cleared', function () {
+                      pm.expect(logoutError).to.eql(null);
+                      pm.expect(logoutResult.code).to.eql(200);
+                      pm.expect(logoutResult.json().ok).to.eql(true);
+                  });
+              });
+          });
+      }
 
-    if (pm.response.code === 200) {
-        var initialized = pm.response.json().initialized;
-        if (initialized === true) {
-            verifyAdministrator();
-        } else if (initialized === false) {
-            pm.sendRequest({
-                url: pm.variables.replaceIn('{{base_url}}/api/admin/setup'),
-                method: 'POST',
-                header: {'Content-Type': 'application/json'},
-            body: {
-                mode: 'raw',
-                raw: JSON.stringify({
-                    username: pm.variables.get('fr02_admin_username'),
-                    password: pm.variables.get('fr02_admin_password')
-                })
-            }
-            }, function (error, result) {
-                pm.test('Missing administrator is initialized', function () {
-                    pm.expect(error).to.eql(null);
-                    pm.expect(result.code).to.eql(200);
-                    pm.expect(result.json().ok).to.eql(true);
-                });
-                if (!error && result && result.code === 200) verifyAdministrator();
-            });
-        }
-    }
-  language: text/javascript
+      if (pm.response.code === 200) {
+          var initialized = pm.response.json().initialized;
+          if (initialized === true) {
+              verifyAdministrator();
+          } else if (initialized === false) {
+              pm.sendRequest({
+                  url: pm.variables.replaceIn('{{base_url}}/api/admin/setup'),
+                  method: 'POST',
+                  header: {'Content-Type': 'application/json'},
+              body: {
+                  mode: 'raw',
+                  raw: JSON.stringify({
+                      username: pm.variables.get('admin_username'),
+                      password: pm.variables.get('admin_password')
+                  })
+              }
+              }, function (error, result) {
+                  pm.test('Missing administrator is initialized', function () {
+                      pm.expect(error).to.eql(null);
+                      pm.expect(result.code).to.eql(200);
+                      pm.expect(result.json().ok).to.eql(true);
+                  });
+                  if (!error && result && result.code === 200) verifyAdministrator();
+              });
+          }
+      }
+    language: text/javascript
 order: 100

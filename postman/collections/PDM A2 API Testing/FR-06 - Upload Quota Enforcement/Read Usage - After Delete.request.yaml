@@ -1,0 +1,11 @@
+$kind: http-request
+url: '{{base_url}}/api/limits'
+method: GET
+scripts:
+- type: afterResponse
+  code: "let data = pm.response.json();\npm.test('Status code is 200', function ()\
+    \ { pm.response.to.have.status(200); });\npm.test('Delete frees one slot', function\
+    \ () {\n    pm.expect(data.user_file_limit).to.eql(2);\n    pm.expect(data.used).to.eql(1);\n\
+    });"
+  language: text/javascript
+order: 27000

@@ -1,0 +1,14 @@
+$kind: http-request
+url: '{{base_url}}/api/admin/login'
+method: POST
+headers:
+- key: Content-Type
+  value: application/json
+body:
+  type: json
+  content: "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+scripts:
+- type: afterResponse
+  code: "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Admin session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+  language: text/javascript
+order: 14000

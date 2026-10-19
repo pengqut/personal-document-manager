@@ -1,24 +1,19 @@
 $kind: http-request
-url: "{{base_url}}/api/upload"
+url: '{{base_url}}/api/upload'
 method: POST
-headers:
-  - key: Cookie
-    value: token={{user_token}}
 body:
   type: formdata
   content:
-    - type: file
-      key: file
-      src:
-        - postman/fixtures/quota_sample.txt
-      description: "User file quota is 0."
-      disabled: false
+  - type: file
+    key: file
+    src:
+    - /F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt
+    disabled: false
 scripts:
-  - type: afterResponse
-    code: "pm.test(\"Status code is 403\", function () {\r
-
-      \    pm.response.to.have.status(403);\r
-
-      });"
-    language: text/javascript
-order: 4000
+- type: afterResponse
+  code: "let data = pm.response.json();\npm.test('Status code is 403', function ()\
+    \ { pm.response.to.have.status(403); });\npm.test('Upload is rejected with zero\
+    \ quota', function () {\n    pm.expect(data.error).to.include('limit of 0 files');\n\
+    });"
+  language: text/javascript
+order: 21000

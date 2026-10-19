@@ -3,14 +3,11 @@ name: Change Category - Valid
 url: '{{base_url}}/api/files/{{test_file_id}}/category'
 method: POST
 body:
-  type: raw
+  type: json
   content: |-
     {
       "category": "image"
     }
-  options:
-    raw:
-      language: json
 scripts:
 - type: afterResponse
   code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Category update is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});\r\n\r\npm.test(\"Category is updated to image\", function () {\r\n    pm.expect(response.category).to.eql(\"image\");\r\n});"

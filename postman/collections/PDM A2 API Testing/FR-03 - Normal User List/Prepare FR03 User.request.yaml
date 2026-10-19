@@ -1,0 +1,44 @@
+$kind: http-request
+url: "{{base_url}}/api/register"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"username\": \"{{user_username}}\",\r
+
+    \  \"password\": \"{{user_password}}\"\r
+
+    }"
+scripts:
+  - type: beforeRequest
+    code: "let suffix = Date.now().toString().slice(-8);\r
+
+      \r
+
+      pm.environment.set(\"user_username\", \"u\" + suffix);\r
+
+      pm.environment.set(\"user_password\", \"Abcdefg1\");\r
+
+      pm.environment.set(\"user_id\", \"\");"
+    language: text/javascript
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 200\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"FR03 test user is created\", function () {\r
+
+      \    pm.expect(response.ok).to.eql(true);\r
+
+      });"
+    language: text/javascript
+order: 2721

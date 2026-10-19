@@ -1,39 +1,35 @@
 $kind: http-request
-url: '{{base_url}}/api/admin/login'
+url: "{{base_url}}/api/admin/login"
 method: POST
 body:
-  type: raw
+  type: json
   content: |-
     {
-      "username": "{{fr02_user_username}}",
-      "password": "{{fr02_user_password}}"
+      "username": "{{user_username}}",
+      "password": "{{user_password}}"
     }
-  options:
-    raw:
-      language: json
 scripts:
-- type: beforeRequest
-  code: |
-    // Development/test database only. Run Prepare Administrator first.
-    // The preparation requests initialize/verify the administrator and ordinary test user.
-    pm.variables.set('fr02_admin_username', pm.environment.get('admin_username') || 'admin001');
-    pm.variables.set('fr02_admin_password', pm.environment.get('admin_password') || 'Abcdefg1');
-    pm.variables.set('fr02_user_username', 'fr02user');
-    pm.variables.set('fr02_user_password', 'Abcdefg1');
-  language: text/javascript
-- type: afterResponse
-  code: |-
-    pm.test('Status code is 401', function () {
-        pm.response.to.have.status(401);
-    });
-    pm.test('Expected error is returned', function () {
-        pm.expect(pm.response.json().error).to.eql("Username or password is incorrect.");
-    });
-    pm.test('Rejected login does not issue a session', function () {
-        pm.expect(pm.response.headers.get('Set-Cookie') || '').to.eql('');
-    });
-  language: text/javascript
+  - type: beforeRequest
+    code: |
+      // Development/test database only. Run Prepare Administrator first.
+      // The preparation requests initialize/verify the administrator and ordinary test user.
+      pm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');
+      pm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');
+      pm.variables.set('user_username', 'fr02user');
+      pm.variables.set('user_password', 'Abcdefg1');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 401', function () {
+          pm.response.to.have.status(401);
+      });
+      pm.test('Expected error is returned', function () {
+          pm.expect(pm.response.json().error).to.eql("Username or password is incorrect.");
+      });
+      pm.test('Rejected login does not issue a session', function () {
+          pm.expect(pm.response.headers.get('Set-Cookie') || '').to.eql('');
+      });
+    language: text/javascript
 order: 5000
 headers:
-- key: Content-Type
-  value: application/json
+  Content-Type: application/json

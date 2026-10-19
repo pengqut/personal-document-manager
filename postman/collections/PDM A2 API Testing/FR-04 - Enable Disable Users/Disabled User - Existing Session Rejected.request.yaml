@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/api/me"
+method: GET
+headers:
+  Cookie: token={{user_token}}
+scripts:
+  - type: afterResponse
+    code: |-
+      let response = pm.response.json();
+      pm.test('Status code is 401', function () { pm.response.to.have.status(401); });
+      pm.test('Existing session is invalid after disable', function () {
+          pm.expect(response.error).to.eql('Not logged in.');
+      });
+    language: text/javascript
+settings:
+  disableCookies: true
+order: 5000

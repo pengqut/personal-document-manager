@@ -1,28 +1,20 @@
 $kind: http-request
-url: "{{base_url}}/api/files/{{test_file_id}}/category"
+url: '{{base_url}}/api/files/{{test_file_id}}/category'
 method: POST
 body:
-  type: urlencoded
-  content:
-    category: document
+  type: raw
+  content: |-
+    {
+      "category": "document"
+    }
+  options:
+    raw:
+      language: json
 scripts:
-  - type: afterResponse
-    code: "let response = pm.response.json();\r
-
-      \r
-
-      pm.test(\"Status code is 404\", function () {\r
-
-      \    pm.response.to.have.status(404);\r
-
-      });\r
-
-      \r
-
-      pm.test(\"Other user's file cannot be modified\", function () {\r
-
-      \    pm.expect(response.error).to.eql(\"File not found.\");\r
-
-      });"
-    language: text/javascript
+- type: afterResponse
+  code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Other user's file cannot be modified\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"
+  language: text/javascript
 order: 5000
+headers:
+- key: Content-Type
+  value: application/json

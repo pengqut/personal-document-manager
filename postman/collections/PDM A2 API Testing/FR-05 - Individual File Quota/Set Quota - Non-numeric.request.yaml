@@ -1,22 +1,22 @@
 $kind: http-request
-url: "{{base_url}}/api/admin/users/{{user_id}}/quota"
+url: '{{base_url}}/api/admin/users/{{user_id}}/quota'
 method: POST
 headers:
-  - key: Cookie
-    value: token={{admin_token}}
+- key: Cookie
+  value: token={{admin_token}}
+- key: Content-Type
+  value: application/json
 body:
-  type: urlencoded
-  content:
-    - key: file_quota
-      value: "abc"
-      description: ""
-      disabled: false
+  type: raw
+  content: |-
+    {
+      "file_quota": "abc"
+    }
+  options:
+    raw:
+      language: json
 scripts:
-  - type: afterResponse
-    code: "pm.test(\"Status code is 400\", function () {\r
-
-      \    pm.response.to.have.status(400);\r
-
-      });"
-    language: text/javascript
+- type: afterResponse
+  code: "pm.test(\"Status code is 400\", function () {\r\n    pm.response.to.have.status(400);\r\n});"
+  language: text/javascript
 order: 6000

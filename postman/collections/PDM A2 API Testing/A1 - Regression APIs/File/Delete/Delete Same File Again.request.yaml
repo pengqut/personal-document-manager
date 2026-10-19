@@ -1,4 +1,24 @@
 $kind: http-request
-url: ""
+url: "{{base_url}}/api/files/{{test_file_id}}/delete"
 method: GET
+scripts:
+  - type: afterResponse
+    code: "let response = pm.response.json();\r
+
+      \r
+
+      pm.test(\"Status code is 404\", function () {\r
+
+      \    pm.response.to.have.status(404);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Deleted file no longer exists\", function () {\r
+
+      \    pm.expect(response.error).to.eql(\"File not found.\");\r
+
+      });"
+    language: text/javascript
 order: 2000

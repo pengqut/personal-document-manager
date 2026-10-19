@@ -1,36 +1,22 @@
 $kind: http-request
-url: "{{base_url}}/api/admin/users/{{user_id}}/quota"
+url: '{{base_url}}/api/admin/users/{{user_id}}/quota'
 method: POST
 headers:
-  - key: Cookie
-    value: token={{admin_token}}
+- key: Cookie
+  value: token={{admin_token}}
+- key: Content-Type
+  value: application/json
 body:
-  type: urlencoded
-  content:
-    - key: file_quota
-      value: "1"
-      description: "User already has more than one file."
-      disabled: false
+  type: raw
+  content: |-
+    {
+      "file_quota": "1"
+    }
+  options:
+    raw:
+      language: json
 scripts:
-  - type: afterResponse
-    code: "let response = pm.response.json();\r
-
-      \r
-
-      pm.test(\"Status code is 200\", function () {\r
-
-      \    pm.response.to.have.status(200);\r
-
-      });\r
-
-      \r
-
-      pm.test(\"Quota can sit below the current file count\", function () {\r
-
-      \    pm.expect(response.file_quota).to.eql(1);\r
-
-      \    pm.expect(response.file_count).to.be.above(1);\r
-
-      });"
-    language: text/javascript
+- type: afterResponse
+  code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Quota can sit below the current file count\", function () {\r\n    pm.expect(response.file_quota).to.eql(1);\r\n    pm.expect(response.file_count).to.be.above(1);\r\n});"
+  language: text/javascript
 order: 3000

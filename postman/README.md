@@ -1,7 +1,7 @@
-# API Testing
+# PDM Postman Testing
 
-## Prerequisites
+The collection follows Tutorial 10 Part 1. Normal POST request data is sent using **Body -> raw -> JSON** with `Content-Type: application/json`.
 
-- Run API tests only in DEV/TEST with a separate database. Never target the deployed application or its database: tests change administrator setup, users, sessions, quotas and files.
+GET requests have no request body. File-upload requests remain **form-data** because `/api/upload` sends an actual file and the application reads `request.files`. This is the only body-format exception.
 
-- Run FR-01 and FR-02 as a separate test sequence, starting with an empty DEV/TEST database. Run FR-01 first, then FR-02 using the same database. These tests initialize the administrator and create user/session data, which can affect the starting conditions of other tests.
+Use the `PDM Local Test` environment and run requests in the planned requirement order.

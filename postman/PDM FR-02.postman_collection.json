@@ -45,12 +45,13 @@
               "    pm.sendRequest({",
               "        url: pm.variables.replaceIn('{{base_url}}/api/admin/login'),",
               "        method: 'POST',",
+              "        header: {'Content-Type': 'application/json'},",
               "        body: {",
-              "            mode: 'urlencoded',",
-              "            urlencoded: [",
-              "                {key: 'username', value: pm.variables.get('fr02_admin_username')},",
-              "                {key: 'password', value: pm.variables.get('fr02_admin_password')}",
-              "            ]",
+              "            mode: 'raw',",
+              "            raw: JSON.stringify({",
+              "                username: pm.variables.get('fr02_admin_username'),",
+              "                password: pm.variables.get('fr02_admin_password')",
+              "            })",
               "        }",
               "    }, function (error, result) {",
               "        pm.test('Prepared administrator accepts the configured credentials', function () {",
@@ -87,13 +88,14 @@
               "        pm.sendRequest({",
               "            url: pm.variables.replaceIn('{{base_url}}/api/admin/setup'),",
               "            method: 'POST',",
-              "            body: {",
-              "                mode: 'urlencoded',",
-              "                urlencoded: [",
-              "                    {key: 'username', value: pm.variables.get('fr02_admin_username')},",
-              "                    {key: 'password', value: pm.variables.get('fr02_admin_password')}",
-              "                ]",
-              "            }",
+              "            header: {'Content-Type': 'application/json'},",
+              "        body: {",
+              "            mode: 'raw',",
+              "            raw: JSON.stringify({",
+              "                username: pm.variables.get('fr02_admin_username'),",
+              "                password: pm.variables.get('fr02_admin_password')",
+              "            })",
+              "        }",
               "        }, function (error, result) {",
               "            pm.test('Missing administrator is initialized', function () {",
               "                pm.expect(error).to.eql(null);",
@@ -115,20 +117,21 @@
         "url": "{{base_url}}/api/register",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "{{fr02_user_username}}"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "{{fr02_user_password}}"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{fr02_user_username}}\",\n  \"password\": \"{{fr02_user_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {
@@ -162,12 +165,13 @@
               "    pm.sendRequest({",
               "        url: pm.variables.replaceIn('{{base_url}}/api/login'),",
               "        method: 'POST',",
+              "        header: {'Content-Type': 'application/json'},",
               "        body: {",
-              "            mode: 'urlencoded',",
-              "            urlencoded: [",
-              "                {key: 'username', value: pm.variables.get('fr02_user_username')},",
-              "                {key: 'password', value: pm.variables.get('fr02_user_password')}",
-              "            ]",
+              "            mode: 'raw',",
+              "            raw: JSON.stringify({",
+              "                username: pm.variables.get('fr02_user_username'),",
+              "                password: pm.variables.get('fr02_user_password')",
+              "            })",
               "        }",
               "    }, function (error, result) {",
               "        pm.test('Prepared user is enabled and has the expected password', function () {",
@@ -205,20 +209,21 @@
         "url": "{{base_url}}/api/admin/login",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "{{fr02_admin_username}}"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "{{fr02_admin_password}}"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{fr02_admin_username}}\",\n  \"password\": \"{{fr02_admin_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {
@@ -333,20 +338,21 @@
         "url": "{{base_url}}/api/admin/login",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "{{fr02_admin_username}}"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "{{fr02_wrong_password}}"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{fr02_admin_username}}\",\n  \"password\": \"{{fr02_wrong_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {
@@ -389,20 +395,21 @@
         "url": "{{base_url}}/api/admin/login",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "{{fr02_user_username}}"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "{{fr02_user_password}}"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{fr02_user_username}}\",\n  \"password\": \"{{fr02_user_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {
@@ -444,20 +451,21 @@
         "url": "{{base_url}}/api/login",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "{{fr02_admin_username}}"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "{{fr02_admin_password}}"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{fr02_admin_username}}\",\n  \"password\": \"{{fr02_admin_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {
@@ -499,20 +507,21 @@
         "url": "{{base_url}}/api/login",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "{{fr02_user_username}}"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "{{fr02_user_password}}"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{fr02_user_username}}\",\n  \"password\": \"{{fr02_user_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {

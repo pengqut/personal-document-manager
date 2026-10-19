@@ -19,20 +19,21 @@
         "url": "{{base_url}}/api/admin/setup",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "admi"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "Abcdefg1"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admi\",\n  \"password\": \"Abcdefg1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {
@@ -72,20 +73,21 @@
         "url": "{{base_url}}/api/admin/setup",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "admin001"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "weak"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin001\",\n  \"password\": \"weak\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {
@@ -125,20 +127,21 @@
         "url": "{{base_url}}/api/admin/setup",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "admin001"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "Abcdefg1"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin001\",\n  \"password\": \"Abcdefg1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {
@@ -200,20 +203,21 @@
         "url": "{{base_url}}/api/admin/setup",
         "method": "POST",
         "body": {
-          "mode": "urlencoded",
-          "urlencoded": [
-            {
-              "key": "username",
-              "type": "text",
-              "value": "admin002"
-            },
-            {
-              "key": "password",
-              "type": "text",
-              "value": "Abcdefg1"
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin002\",\n  \"password\": \"Abcdefg1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
-        }
+          }
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ]
       },
       "event": [
         {

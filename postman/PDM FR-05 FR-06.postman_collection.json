@@ -15,21 +15,17 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "username",
-                  "value": "admin001"
-                },
-                {
-                  "key": "password",
-                  "value": "Abcdefg1"
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin001\",\n  \"password\": \"Abcdefg1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/login"
           },
@@ -88,7 +84,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -96,13 +92,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "5"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -133,7 +129,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -141,13 +137,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "0"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -175,7 +171,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -183,13 +179,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "1"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -220,7 +216,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -228,13 +224,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "-1"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -260,7 +256,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -268,13 +264,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "1.5"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"1.5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -300,7 +296,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -308,13 +304,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "abc"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -345,7 +341,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -353,13 +349,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "10"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -385,21 +381,17 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "username",
-                  "value": "alice123"
-                },
-                {
-                  "key": "password",
-                  "value": "Abcdefg1"
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"alice123\",\n  \"password\": \"Abcdefg1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/login"
           },
@@ -494,7 +486,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -502,13 +494,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "{{used}}"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"{{used}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -573,7 +565,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -581,13 +573,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "0"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -650,7 +642,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -658,13 +650,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "1"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },
@@ -788,7 +780,7 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json"
               },
               {
                 "key": "Cookie",
@@ -796,13 +788,13 @@
               }
             ],
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "{{used}}"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"{{used}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
           },

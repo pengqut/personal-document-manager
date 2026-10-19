@@ -1,9 +1,17 @@
 $kind: http-request
-url: "{{base_url}}/api/register"
+url: '{{base_url}}/api/register'
 method: POST
 body:
-  type: urlencoded
-  content:
-    username: A2Test02
-    password: Testpassowrd123
+  type: raw
+  content: |-
+    {
+      "username": "A2Test02",
+      "password": "Testpassowrd123"
+    }
+  options:
+    raw:
+      language: json
 order: 1000
+headers:
+- key: Content-Type
+  value: application/json

@@ -146,6 +146,11 @@ jobs:
           args="$(printf '%q ' "$REPO_URL" "$GIT_SHA" "$APP1_NAME" db "$VPC_CIDR")"
           "$RUNNER_TEMP/remote.sh" "$APP1_IP" "bash -s -- ${args}" < .github/scripts/server-deploy.sh
 
+      - name: Keep Assignment 1 on App-1
+        run: |
+          args="$(printf '%q ' "$REPO_URL" v1.1 8080)"
+          "$RUNNER_TEMP/remote.sh" "$APP1_IP" "bash -s -- ${args}" < .github/scripts/deploy-a1.sh
+
       - name: Install the app on App-2
         run: |
           password="$("$RUNNER_TEMP/remote.sh" "$APP1_IP" cat /home/ubuntu/A2-runtime/db.password)"

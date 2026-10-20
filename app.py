@@ -103,6 +103,19 @@ def current_user():
     return auth_service.current_user(request.get_cookie('token'))
 
 
+# Read a request field from raw JSON first, then fall back to form data.
+def request_value(name, default=''):
+    data = request.json
+    if isinstance(data, dict) and name in data:
+        value = data.get(name)
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return 'true' if value else 'false'
+        return str(value)
+    return request.forms.getunicode(name, default)
+
+
 # Require a logged in user or raise NotAuthenticatedError (mapped to 401).
 def require_logged_in():
     user = current_user()
@@ -120,8 +133,8 @@ def index():
 # Register a new user
 @route('/api/register', method='POST')
 def register():
-    username = request.forms.getunicode('username', '').strip()
-    password = request.forms.getunicode('password', '')
+    username = request_value('username', '').strip()
+    password = request_value('password', '')
 
     error = validate.validate_username(username) or validate.validate_password(password)
     if error:
@@ -149,8 +162,8 @@ def admin_setup_status():
 # Create the first administrator account once
 @route('/api/admin/setup', method='POST')
 def admin_setup_submit():
-    username = request.forms.getunicode('username', '')
-    password = request.forms.getunicode('password', '')
+    username = request_value('username', '')
+    password = request_value('password', '')
     try:
         return admin_setup_service.setup_admin(username, password)
     except database.ConflictError:
@@ -163,8 +176,8 @@ def admin_setup_submit():
 # Log in
 @route('/api/login', method='POST')
 def login():
-    username = request.forms.getunicode('username', '')
-    password = request.forms.getunicode('password', '')
+    username = request_value('username', '')
+    password = request_value('password', '')
     result = auth_service.authenticate(username, password, expected_role='user')
     response.set_cookie('token', result['token'], path='/')
     return {'ok': True, 'username': result['user']['username']}
@@ -173,8 +186,8 @@ def login():
 # Administrator login is separate from ordinary user login.
 @route('/api/admin/login', method='POST')
 def admin_login():
-    username = request.forms.getunicode('username', '')
-    password = request.forms.getunicode('password', '')
+    username = request_value('username', '')
+    password = request_value('password', '')
     result = auth_service.authenticate(username, password, expected_role='admin')
     response.set_cookie('token', result['token'], path='/')
     return {'ok': True, 'username': result['user']['username']}
@@ -196,7 +209,7 @@ def admin_users():
 # Enable or disable a normal user.
 @route('/api/admin/users/<user_id:int>/status', method='POST')
 def admin_user_status(user_id):
-    enabled_value = request.forms.getunicode('enabled', '').strip().lower()
+    enabled_value = request_value('enabled', '').strip().lower()
 
     if enabled_value not in ('true', 'false'):
         response.status = 400
@@ -226,7 +239,7 @@ def admin_user_status(user_id):
 # Set the file quota of a normal user.
 @route('/api/admin/users/<user_id:int>/quota', method='POST')
 def admin_user_quota(user_id):
-    raw_quota = request.forms.getunicode('file_quota', '')
+    raw_quota = request_value('file_quota', '')
     command = quota.SetFileQuota(db, user_id, raw_quota)
     return command.execute()
 
@@ -344,7 +357,7 @@ def download_file(file_id):
 def change_category(file_id):
     user = require_logged_in()
 
-    new_category = request.forms.getunicode('category', '')
+    new_category = request_value('category', '')
     if new_category not in classify.CATEGORIES:
         response.status = 400
         return {'error': 'Not a valid category.'}

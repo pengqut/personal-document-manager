@@ -1,4 +1,23 @@
 $kind: http-request
-url: ""
-method: GET
-order: 2000
+url: '{{base_url}}/api/login'
+method: POST
+headers:
+- key: Content-Type
+  value: 'application/json'
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{user_username}}",
+      "password": "{{user_password}}"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 401', function () { pm.response.to.have.status(401); });
+    pm.test('Disabled user cannot create a new session', function () {
+        pm.expect(response.error).to.eql('Username or password is incorrect.');
+    });
+  language: text/javascript
+order: 6000

@@ -1,4 +1,16 @@
 $kind: http-request
-url: ""
+url: '{{base_url}}/api/admin/users'
 method: GET
-order: 3000
+headers:
+- key: Cookie
+  value: 'token=invalid-session-token'
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 401', function () { pm.response.to.have.status(401); });
+    pm.test('Unauthenticated access is rejected', function () {
+        pm.expect(response.error).to.eql('Not logged in.');
+    });
+  language: text/javascript
+order: 5000

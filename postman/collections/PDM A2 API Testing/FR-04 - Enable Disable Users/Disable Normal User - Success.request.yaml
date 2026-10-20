@@ -1,4 +1,25 @@
 $kind: http-request
-url: ""
-method: GET
-order: 1000
+url: '{{base_url}}/api/admin/users/{{user_id}}/status'
+method: POST
+headers:
+- key: Content-Type
+  value: 'application/json'
+- key: Cookie
+  value: 'token={{admin_token}}'
+body:
+  type: json
+  content: |-
+    {
+      "enabled": false
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    pm.test('User is disabled', function () {
+        pm.expect(response.ok).to.eql(true);
+        pm.expect(response.enabled).to.eql(false);
+    });
+  language: text/javascript
+order: 4000

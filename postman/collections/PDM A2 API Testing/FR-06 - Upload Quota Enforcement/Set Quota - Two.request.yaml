@@ -1,0 +1,17 @@
+$kind: http-request
+url: '{{base_url}}/api/admin/users/{{user_id}}/quota'
+method: POST
+headers:
+- key: Content-Type
+  value: application/json
+body:
+  type: json
+  content: "{\n  \"file_quota\": \"2\"\n}"
+scripts:
+- type: afterResponse
+  code: "let data = pm.response.json();\npm.test('Status code is 200', function ()\
+    \ { pm.response.to.have.status(200); });\npm.test('Quota is 2 with one existing\
+    \ file', function () {\n    pm.expect(data.file_quota).to.eql(2);\n    pm.expect(data.file_count).to.eql(1);\n\
+    });"
+  language: text/javascript
+order: 10000

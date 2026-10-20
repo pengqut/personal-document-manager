@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{base_url}}/api/upload"
+method: POST
+headers:
+  Cookie: token={{user_token}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src:
+        - /F:/QUT study/2026 Semester 2/IFN636/quota_sample.txt
+      disabled: false
+scripts:
+  - type: afterResponse
+    code: pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    language: text/javascript
+order: 15000

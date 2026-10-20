@@ -1,4 +1,16 @@
 $kind: http-request
-url: ""
+url: '{{base_url}}/api/admin/users'
 method: GET
+headers:
+- key: Cookie
+  value: 'token={{user_token}}'
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 403', function () { pm.response.to.have.status(403); });
+    pm.test('Normal user cannot access admin user list', function () {
+        pm.expect(response.error).to.eql('Administrator rights are required.');
+    });
+  language: text/javascript
 order: 4000

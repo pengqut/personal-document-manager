@@ -1,34 +1,22 @@
 $kind: http-request
-url: "{{base_url}}/api/admin/users/{{user_id}}/quota"
+url: '{{base_url}}/api/admin/users/{{user_id}}/quota'
 method: POST
 headers:
-  - key: Cookie
-    value: token={{admin_token}}
+- key: Content-Type
+  value: 'application/json'
+- key: Cookie
+  value: 'token={{admin_token}}'
 body:
-  type: urlencoded
-  content:
-    - key: file_quota
-      value: "0"
-      description: ""
-      disabled: false
+  type: json
+  content: |-
+    {
+      "file_quota": "0"
+    }
 scripts:
-  - type: afterResponse
-    code: "let response = pm.response.json();\r
-
-      \r
-
-      pm.test(\"Status code is 200\", function () {\r
-
-      \    pm.response.to.have.status(200);\r
-
-      });\r
-
-      \r
-
-      pm.test(\"Zero quota is stored\", function () {\r
-
-      \    pm.expect(response.file_quota).to.eql(0);\r
-
-      });"
-    language: text/javascript
-order: 2000
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    pm.test('Zero quota is stored', function () { pm.expect(response.file_quota).to.eql(0); });
+  language: text/javascript
+order: 10000

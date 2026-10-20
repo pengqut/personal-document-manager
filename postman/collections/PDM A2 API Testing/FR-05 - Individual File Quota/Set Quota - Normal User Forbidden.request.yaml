@@ -1,0 +1,20 @@
+$kind: http-request
+url: '{{base_url}}/api/admin/users/{{user_id}}/quota'
+method: POST
+headers:
+- key: Content-Type
+  value: 'application/json'
+- key: Cookie
+  value: 'token={{user_token}}'
+body:
+  type: json
+  content: |-
+    {
+      "file_quota": "3"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('Status code is 403', function () { pm.response.to.have.status(403); });
+  language: text/javascript
+order: 12000

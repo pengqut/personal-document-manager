@@ -1,4 +1,56 @@
 $kind: http-request
-url: ""
-method: GET
-order: 1000
+url: '{{base_url}}/api/admin/setup'
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "username": "admin001",
+      "password": "Abcdefg1"
+    }
+scripts:
+- type: beforeRequest
+  code: |-
+    pm.sendRequest({
+        url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),
+        method: 'GET'
+    }, function (error, result) {
+        pm.test('Setup status request succeeds', function () {
+            pm.expect(error).to.eql(null);
+            pm.expect(result.code).to.eql(200);
+        });
+        if (!error && result) {
+            pm.test('Setup initialized is false', function () {
+                pm.expect(result.json().initialized).to.eql(false);
+            });
+        }
+    });
+  language: text/javascript
+- type: afterResponse
+  code: |-
+    pm.test('Status code is 200', function () {
+        pm.response.to.have.status(200);
+    });
+    pm.test('Administrator setup succeeds', function () {
+        pm.expect(pm.response.json().ok).to.eql(true);
+    });
+
+    pm.sendRequest({
+        url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),
+        method: 'GET'
+    }, function (error, result) {
+        pm.test('Setup status request succeeds', function () {
+            pm.expect(error).to.eql(null);
+            pm.expect(result.code).to.eql(200);
+        });
+        if (!error && result) {
+            pm.test('Setup initialized is true', function () {
+                pm.expect(result.json().initialized).to.eql(true);
+            });
+        }
+    });
+  language: text/javascript
+order: 4000
+headers:
+- key: Content-Type
+  value: application/json

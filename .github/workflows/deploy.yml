@@ -1,29 +1,5 @@
 name: Deploy
 
-# Tests run first. The deploy job then updates two app servers behind an
-# Application Load Balancer and runs the load test. Nothing is deleted at the
-# end, so the servers stay up for screenshots and the demo.
-#
-# App-1 is the existing instance (instance_id). It also hosts PostgreSQL on
-# port 5001. App-2 is found by its Name tag, or launched in app2_subnet
-# (another Availability Zone) with the same image, size, key pair, and
-# security group. Both run the app in /home/ubuntu/A2-PDM under PM2 on
-# port 80. App-1 also keeps Assignment 1 (tag v1.1) in /home/ubuntu/A1-PDM
-# under PM2 as pdm-a1 on port 8080, with its own SQLite database.
-#
-# The security_group input is attached to both servers and the load
-# balancer. The job adds PostgreSQL 5001 from the same group when no existing
-# rule allows it, and SSH 22 and HTTP 80 from the runner's IP for the job.
-#
-# The load balancer pdm-alb forwards HTTP 80 to the target group pdm-tg.
-# Health check: GET /api/admin/setup-status.
-#
-# The job logs in over SSH with the key pair in the repository secret
-# EC2_SSH_PRIVATE_KEY (the student role cannot use EC2 Instance Connect).
-# SSH from the runner's IP is allowed for the job and removed at the end.
-#
-# Academy credentials are temporary. Enter them on the Run workflow form.
-# Copy the access key, secret key, and session token from AWS Details.
 
 on:
   workflow_dispatch:

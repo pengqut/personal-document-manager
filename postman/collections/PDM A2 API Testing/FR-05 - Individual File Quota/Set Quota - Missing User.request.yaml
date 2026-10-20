@@ -1,0 +1,22 @@
+$kind: http-request
+url: '{{base_url}}/api/admin/users/999999/quota'
+method: POST
+headers:
+- key: Content-Type
+  value: 'application/json'
+- key: Cookie
+  value: 'token={{admin_token}}'
+body:
+  type: json
+  content: |-
+    {
+      "file_quota": "3"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 404', function () { pm.response.to.have.status(404); });
+    pm.test('Missing user is rejected', function () { pm.expect(response.error).to.eql('User not found.'); });
+  language: text/javascript
+order: 11000

@@ -1,4 +1,39 @@
 $kind: http-request
-url: ""
-method: GET
-order: 4000
+url: '{{base_url}}/api/admin/setup'
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "username": "admin002",
+      "password": "Abcdefg1"
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    pm.test('Status code is 409', function () {
+        pm.response.to.have.status(409);
+    });
+    pm.test('Expected setup error is returned', function () {
+        pm.expect(pm.response.json().error).to.eql("Administrator setup is already complete.");
+    });
+
+    pm.sendRequest({
+        url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),
+        method: 'GET'
+    }, function (error, result) {
+        pm.test('Setup status request succeeds', function () {
+            pm.expect(error).to.eql(null);
+            pm.expect(result.code).to.eql(200);
+        });
+        if (!error && result) {
+            pm.test('Setup initialized is true', function () {
+                pm.expect(result.json().initialized).to.eql(true);
+            });
+        }
+    });
+  language: text/javascript
+order: 5000
+headers:
+- key: Content-Type
+  value: application/json

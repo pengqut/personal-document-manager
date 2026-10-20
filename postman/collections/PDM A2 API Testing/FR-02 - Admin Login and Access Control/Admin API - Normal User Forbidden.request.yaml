@@ -1,4 +1,12 @@
+# Run this folder in saved order against a development/test database only.
 $kind: http-request
-url: ""
+url: "{{base_url}}/api/admin/me"
 method: GET
-order: 4000
+headers:
+  - key: Cookie
+    value: "token={{user_token}}"
+scripts:
+  - type: afterResponse
+    code: "pm.test('Status code is 403', function () {\n    pm.response.to.have.status(403);\n});\npm.test('Expected error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Administrator rights are required.\");\n});"
+    language: text/javascript
+order: 8000

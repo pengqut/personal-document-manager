@@ -1,22 +1,24 @@
 $kind: http-request
-url: "{{base_url}}/api/admin/users/{{user_id}}/quota"
+url: '{{base_url}}/api/admin/users/{{user_id}}/quota'
 method: POST
 headers:
-  - key: Cookie
-    value: token={{admin_token}}
+- key: Content-Type
+  value: 'application/json'
+- key: Cookie
+  value: 'token={{admin_token}}'
 body:
-  type: urlencoded
-  content:
-    - key: file_quota
-      value: "abc"
-      description: ""
-      disabled: false
+  type: json
+  content: |-
+    {
+      "file_quota": "abc"
+    }
 scripts:
-  - type: afterResponse
-    code: "pm.test(\"Status code is 400\", function () {\r
-
-      \    pm.response.to.have.status(400);\r
-
-      });"
-    language: text/javascript
-order: 6000
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 400', function () { pm.response.to.have.status(400); });
+    pm.test('Expected quota result is returned', function () {
+        pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');
+    });
+  language: text/javascript
+order: 7000

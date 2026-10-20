@@ -1,47 +1,50 @@
 {
   "info": {
+    "_postman_id": "269fd088-e371-471f-a0d5-9a255fb09ccd",
     "name": "PDM FR-05 FR-06",
-    "description": "Postman tests for SCRUM-45 (FR-05) and SCRUM-49 (FR-06). Run against the local app.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "FR-05 Individual File Quota and FR-06 Upload Quota Enforcement. All ordinary POST data uses Body -> raw -> JSON. File uploads remain multipart form-data because /api/upload receives an actual file through request.files."
   },
   "item": [
     {
       "name": "FR-05 - Individual File Quota",
       "item": [
         {
-          "name": "Admin login",
+          "name": "Admin Login - Prepare",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/admin/login",
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "username",
-                  "value": "admin001"
-                },
-                {
-                  "key": "password",
-                  "value": "Abcdefg1"
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/login"
+              }
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "var response = pm.response.json();",
                   "pm.test('Admin login status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Admin login succeeds', function () { pm.expect(response.ok).to.eql(true); });",
                   "var cookie = pm.response.headers.get('Set-Cookie') || '';",
-                  "pm.environment.set('admin_token', cookie.split(';')[0].replace('token=', ''));"
+                  "var match = cookie.match(/token=([^;]+)/);",
+                  "pm.test('Admin session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });",
+                  "if (match) pm.environment.set('admin_token', match[1]);"
                 ]
               }
             }
@@ -51,28 +54,76 @@
           }
         },
         {
-          "name": "Find normal user",
+          "name": "Find Normal User",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{admin_token}}"
+                "value": "token={{admin_token}}",
+                "type": "text"
               }
             ],
             "url": "{{base_url}}/api/admin/users"
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('User list status is 200', function () { pm.response.to.have.status(200); });",
-                  "var users = pm.response.json().users;",
-                  "var user = users.find(function (item) { return item.username === 'alice123'; });",
-                  "pm.expect(user, 'alice123 exists').to.be.an('object');",
-                  "pm.environment.set('user_id', String(user.id));"
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Users array is returned', function () { pm.expect(response.users).to.be.an('array'); });",
+                  "var username = pm.environment.get('user_username');",
+                  "var user = response.users.find(function (item) { return item.username === username; });",
+                  "pm.test('Configured normal user is listed', function () { pm.expect(user).to.be.an('object'); });",
+                  "if (user) pm.environment.set('user_id', String(user.id));"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "User Login - Prepare Usage Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('User login status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('User login succeeds', function () { pm.expect(response.ok).to.eql(true); });",
+                  "var cookie = pm.response.headers.get('Set-Cookie') || '';",
+                  "var match = cookie.match(/token=([^;]+)/);",
+                  "pm.test('User session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });",
+                  "if (match) pm.environment.set('user_token', match[1]);"
                 ]
               }
             }
@@ -88,24 +139,27 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Cookie",
-                "value": "token={{admin_token}}"
+                "value": "token={{admin_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "5"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
+              }
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -114,10 +168,230 @@
                 "exec": [
                   "var response = pm.response.json();",
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Quota is updated', function () {",
+                  "pm.test('Quota is updated to 5', function () {",
                   "    pm.expect(response.ok).to.eql(true);",
                   "    pm.expect(response.file_quota).to.eql(5);",
                   "});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Set Quota - Negative",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Negative quota is rejected', function () {",
+                  "    pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Set Quota - Fractional",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 1.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Fractional quota is rejected', function () {",
+                  "    pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Set Quota - Non-numeric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Non-numeric quota is rejected', function () {",
+                  "    pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Set Quota - Empty",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Empty quota is rejected', function () {",
+                  "    pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Verify Invalid Quotas Did Not Change Value",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var users = pm.response.json().users;",
+                  "var user = users.find(function (item) { return String(item.id) === String(pm.environment.get('user_id')); });",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Previous valid quota remains 5', function () { pm.expect(user.file_quota).to.eql(5); });"
                 ]
               }
             }
@@ -133,24 +407,27 @@
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Cookie",
-                "value": "token={{admin_token}}"
+                "value": "token={{admin_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "0"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
+              }
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -169,30 +446,285 @@
           }
         },
         {
+          "name": "Set Quota - Missing User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/999999/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Missing user is rejected', function () { pm.expect(response.error).to.eql('User not found.'); });"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Set Quota - Normal User Forbidden",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Set Quota - Unauthenticated",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token=invalid-session-token",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Prepare Quota For Usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Upload Usage File 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/upload",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/quota_sample.txt"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Upload Usage File 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/upload",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/quota_sample.txt"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
           "name": "Set Quota - Below Current Usage",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Cookie",
-                "value": "token={{admin_token}}"
+                "value": "token={{admin_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "1"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
+              }
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -201,130 +733,10 @@
                 "exec": [
                   "var response = pm.response.json();",
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Quota can sit below the current file count', function () {",
+                  "pm.test('Quota can be below current usage without deleting files', function () {",
                   "    pm.expect(response.file_quota).to.eql(1);",
-                  "    pm.expect(response.file_count).to.be.above(1);",
+                  "    pm.expect(response.file_count).to.be.above(response.file_quota);",
                   "});"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableCookies": true
-          }
-        },
-        {
-          "name": "Set Quota - Negative",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              },
-              {
-                "key": "Cookie",
-                "value": "token={{admin_token}}"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "-1"
-                }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableCookies": true
-          }
-        },
-        {
-          "name": "Set Quota - Fractional",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              },
-              {
-                "key": "Cookie",
-                "value": "token={{admin_token}}"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "1.5"
-                }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableCookies": true
-          }
-        },
-        {
-          "name": "Set Quota - Non-numeric",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              },
-              {
-                "key": "Cookie",
-                "value": "token={{admin_token}}"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "abc"
-                }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });"
                 ]
               }
             }
@@ -339,37 +751,41 @@
       "name": "FR-06 - Upload Quota Enforcement",
       "item": [
         {
-          "name": "Raise quota for upload setup",
+          "name": "Admin Login - Prepare",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              },
-              {
-                "key": "Cookie",
-                "value": "token={{admin_token}}"
+                "value": "application/json",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/admin/login",
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "10"
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
+              }
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Quota raised to 10', function () { pm.response.to.have.status(200); });"
+                  "var response = pm.response.json();",
+                  "pm.test('Admin login status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Admin login succeeds', function () { pm.expect(response.ok).to.eql(true); });",
+                  "var cookie = pm.response.headers.get('Set-Cookie') || '';",
+                  "var match = cookie.match(/token=([^;]+)/);",
+                  "pm.test('Admin session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });",
+                  "if (match) pm.environment.set('admin_token', match[1]);"
                 ]
               }
             }
@@ -379,39 +795,154 @@
           }
         },
         {
-          "name": "User login",
+          "name": "Find Normal User",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
               {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
               }
             ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "username",
-                  "value": "alice123"
-                },
-                {
-                  "key": "password",
-                  "value": "Abcdefg1"
-                }
-              ]
-            },
-            "url": "{{base_url}}/api/login"
+            "url": "{{base_url}}/api/admin/users"
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Users array is returned', function () { pm.expect(response.users).to.be.an('array'); });",
+                  "var username = pm.environment.get('user_username');",
+                  "var user = response.users.find(function (item) { return item.username === username; });",
+                  "pm.test('Configured normal user is listed', function () { pm.expect(user).to.be.an('object'); });",
+                  "if (user) pm.environment.set('user_id', String(user.id));"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "User Login - Prepare",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
                   "pm.test('User login status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('User login succeeds', function () { pm.expect(response.ok).to.eql(true); });",
                   "var cookie = pm.response.headers.get('Set-Cookie') || '';",
-                  "pm.environment.set('user_token', cookie.split(';')[0].replace('token=', ''));"
+                  "var match = cookie.match(/token=([^;]+)/);",
+                  "pm.test('User session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });",
+                  "if (match) pm.environment.set('user_token', match[1]);"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Read Current Usage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/limits"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var used = Number(response.used);",
+                  "pm.environment.set('used', String(used));",
+                  "pm.environment.set('quota_one_more', String(used + 1));"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Set Quota - One More Than Usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": {{quota_one_more}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('One upload slot is available', function () { pm.expect(response.file_quota).to.be.above(response.file_count); });"
                 ]
               }
             }
@@ -427,9 +958,11 @@
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{user_token}}"
+                "value": "token={{user_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/upload",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -439,9 +972,9 @@
                   "src": "fixtures/quota_sample.txt"
                 }
               ]
-            },
-            "url": "{{base_url}}/api/upload"
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -450,7 +983,7 @@
                 "exec": [
                   "var response = pm.response.json();",
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Upload is successful', function () { pm.expect(response.ok).to.eql(true); });"
+                  "pm.test('Upload succeeds below quota', function () { pm.expect(response.ok).to.eql(true); });"
                 ]
               }
             }
@@ -460,65 +993,29 @@
           }
         },
         {
-          "name": "Read usage",
+          "name": "Read Usage At Quota",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{user_token}}"
+                "value": "token={{user_token}}",
+                "type": "text"
               }
             ],
             "url": "{{base_url}}/api/limits"
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Limits status is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set('used', String(pm.response.json().used));"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableCookies": true
-          }
-        },
-        {
-          "name": "Set quota equal to current usage",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              },
-              {
-                "key": "Cookie",
-                "value": "token={{admin_token}}"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "{{used}}"
-                }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Quota set to current usage', function () { pm.response.to.have.status(200); });"
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.environment.set('used_at_quota', String(response.used));",
+                  "pm.test('Usage equals quota', function () { pm.expect(response.used).to.eql(response.user_file_limit); });"
                 ]
               }
             }
@@ -534,9 +1031,11 @@
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{user_token}}"
+                "value": "token={{user_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/upload",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -546,9 +1045,9 @@
                   "src": "fixtures/quota_sample.txt"
                 }
               ]
-            },
-            "url": "{{base_url}}/api/upload"
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -567,37 +1066,40 @@
           }
         },
         {
-          "name": "Set quota to zero",
+          "name": "Set Quota - Zero",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Cookie",
-                "value": "token={{admin_token}}"
+                "value": "token={{admin_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "0"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
+              }
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Zero quota stored', function () { pm.response.to.have.status(200); });"
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
                 ]
               }
             }
@@ -613,9 +1115,11 @@
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{user_token}}"
+                "value": "token={{user_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/upload",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -625,9 +1129,9 @@
                   "src": "fixtures/quota_sample.txt"
                 }
               ]
-            },
-            "url": "{{base_url}}/api/upload"
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -644,41 +1148,52 @@
           }
         },
         {
-          "name": "Set quota below current usage",
+          "name": "Set Quota - Below Current Usage",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
+                "value": "application/json",
+                "type": "text"
               },
               {
                 "key": "Cookie",
-                "value": "token={{admin_token}}"
+                "value": "token={{admin_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
             "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "1"
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": {{quota_below_usage}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
+              }
+            }
           },
+          "response": [],
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var used = Number(pm.environment.get('used_at_quota') || '1');",
+                  "pm.environment.set('quota_below_usage', String(Math.max(0, used - 1)));"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "var response = pm.response.json();",
-                  "pm.test('Quota is below the file count', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    pm.expect(response.file_count).to.be.above(response.file_quota);",
-                  "});"
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Quota is below current usage', function () { pm.expect(response.file_count).to.be.above(response.file_quota); });"
                 ]
               }
             }
@@ -694,9 +1209,11 @@
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{user_token}}"
+                "value": "token={{user_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/upload",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -706,9 +1223,9 @@
                   "src": "fixtures/quota_sample.txt"
                 }
               ]
-            },
-            "url": "{{base_url}}/api/upload"
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -725,17 +1242,64 @@
           }
         },
         {
-          "name": "List files",
+          "name": "Restore Quota To Current Usage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": {{used_at_quota}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Quota equals current usage again', function () { pm.expect(response.file_quota).to.eql(response.file_count); });"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "List Files - Prepare Delete",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{user_token}}"
+                "value": "token={{user_token}}",
+                "type": "text"
               }
             ],
             "url": "{{base_url}}/api/files"
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -743,9 +1307,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "var files = pm.response.json().files;",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
                   "pm.test('User has a file to delete', function () { pm.expect(files.length).to.be.above(0); });",
-                  "pm.environment.set('file_id', String(files[0].id));",
-                  "pm.environment.set('used', String(files.length));"
+                  "if (files.length > 0) pm.environment.set('file_id', String(files[0].id));"
                 ]
               }
             }
@@ -755,67 +1319,28 @@
           }
         },
         {
-          "name": "Delete one file",
+          "name": "Delete One File",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{user_token}}"
+                "value": "token={{user_token}}",
+                "type": "text"
               }
             ],
             "url": "{{base_url}}/api/files/{{file_id}}/delete"
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Delete status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ],
-          "protocolProfileBehavior": {
-            "disableCookies": true
-          }
-        },
-        {
-          "name": "Set quota to the count after delete",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              },
-              {
-                "key": "Cookie",
-                "value": "token={{admin_token}}"
-              }
-            ],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "file_quota",
-                  "value": "{{used}}"
-                }
-              ]
-            },
-            "url": "{{base_url}}/api/admin/users/{{user_id}}/quota"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Quota now allows one more file', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    pm.expect(pm.response.json().file_quota).to.be.above(pm.response.json().file_count);",
-                  "});"
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Delete succeeds', function () { pm.expect(response.ok).to.eql(true); });"
                 ]
               }
             }
@@ -831,9 +1356,11 @@
             "header": [
               {
                 "key": "Cookie",
-                "value": "token={{user_token}}"
+                "value": "token={{user_token}}",
+                "type": "text"
               }
             ],
+            "url": "{{base_url}}/api/upload",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -843,9 +1370,9 @@
                   "src": "fixtures/quota_sample.txt"
                 }
               ]
-            },
-            "url": "{{base_url}}/api/upload"
+            }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -854,7 +1381,38 @@
                 "exec": [
                   "var response = pm.response.json();",
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Upload is successful', function () { pm.expect(response.ok).to.eql(true); });"
+                  "pm.test('Upload succeeds after delete frees a slot', function () { pm.expect(response.ok).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          }
+        },
+        {
+          "name": "Read Final Usage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/limits"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();",
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Final usage equals quota', function () { pm.expect(response.used).to.eql(response.user_file_limit); });"
                 ]
               }
             }

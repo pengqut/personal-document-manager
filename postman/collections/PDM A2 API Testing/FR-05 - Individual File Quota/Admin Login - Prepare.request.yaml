@@ -1,0 +1,30 @@
+$kind: http-request
+url: '{{base_url}}/api/admin/login'
+method: POST
+headers:
+- key: Content-Type
+  value: 'application/json'
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{admin_username}}",
+      "password": "{{admin_password}}"
+    }
+scripts:
+- type: beforeRequest
+  code: |-
+    pm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');
+    pm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');
+  language: text/javascript
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    pm.test('Admin login succeeds', function () { pm.expect(response.ok).to.eql(true); });
+    let cookie = pm.response.headers.get('Set-Cookie') || '';
+    let match = cookie.match(/token=([^;]+)/);
+    pm.test('Admin session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });
+    if (match) pm.environment.set('admin_token', match[1]);
+  language: text/javascript
+order: 1000

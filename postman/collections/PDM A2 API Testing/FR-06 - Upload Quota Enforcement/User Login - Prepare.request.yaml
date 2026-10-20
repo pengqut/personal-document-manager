@@ -1,0 +1,20 @@
+$kind: http-request
+url: '{{base_url}}/api/login'
+method: POST
+headers:
+- key: Content-Type
+  value: application/json
+body:
+  type: json
+  content: "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\
+    \n}"
+scripts:
+- type: afterResponse
+  code: "let data = pm.response.json();\npm.test('Status code is 200', function ()\
+    \ { pm.response.to.have.status(200); });\npm.test('User login succeeds', function\
+    \ () { pm.expect(data.ok).to.eql(true); });\npm.test('Correct user is logged in',\
+    \ function () { pm.expect(data.username).to.eql(pm.environment.get('user_username'));\
+    \ });\npm.test('User session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie')\
+    \ || '').to.include('token=');\n});"
+  language: text/javascript
+order: 5000

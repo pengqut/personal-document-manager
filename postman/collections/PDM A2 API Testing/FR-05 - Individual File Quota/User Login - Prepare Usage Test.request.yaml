@@ -1,0 +1,30 @@
+$kind: http-request
+url: '{{base_url}}/api/login'
+method: POST
+headers:
+- key: Content-Type
+  value: 'application/json'
+body:
+  type: json
+  content: |-
+    {
+      "username": "{{user_username}}",
+      "password": "{{user_password}}"
+    }
+scripts:
+- type: beforeRequest
+  code: |-
+    pm.variables.set('user_username', pm.environment.get('user_username') || 'fr02user');
+    pm.variables.set('user_password', pm.environment.get('user_password') || 'Abcdefg1');
+  language: text/javascript
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    pm.test('User login succeeds', function () { pm.expect(response.ok).to.eql(true); });
+    let cookie = pm.response.headers.get('Set-Cookie') || '';
+    let match = cookie.match(/token=([^;]+)/);
+    pm.test('User session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });
+    if (match) pm.environment.set('user_token', match[1]);
+  language: text/javascript
+order: 3000

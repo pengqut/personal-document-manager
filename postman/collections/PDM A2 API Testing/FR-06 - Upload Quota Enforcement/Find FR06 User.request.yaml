@@ -1,0 +1,14 @@
+$kind: http-request
+url: '{{base_url}}/api/admin/users'
+method: GET
+scripts:
+- type: afterResponse
+  code: "let data = pm.response.json();\npm.test('Status code is 200', function ()\
+    \ { pm.response.to.have.status(200); });\nlet username = pm.environment.get('user_username');\n\
+    let user = data.users.find(function (item) { return item.username === username;\
+    \ });\npm.test('FR06 user is listed', function () { pm.expect(user).to.exist;\
+    \ });\nif (user) {\n    pm.environment.set('user_id', String(user.id));\n    pm.test('FR06\
+    \ user starts with no files', function () { pm.expect(user.file_count).to.eql(0);\
+    \ });\n}"
+  language: text/javascript
+order: 3000

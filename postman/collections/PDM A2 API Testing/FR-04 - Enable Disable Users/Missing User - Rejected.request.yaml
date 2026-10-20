@@ -1,4 +1,22 @@
 $kind: http-request
-url: ""
-method: GET
-order: 5000
+url: '{{base_url}}/api/admin/users/999999/status'
+method: POST
+headers:
+- key: Content-Type
+  value: 'application/json'
+- key: Cookie
+  value: 'token={{admin_token}}'
+body:
+  type: json
+  content: |-
+    {
+      "enabled": false
+    }
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 404', function () { pm.response.to.have.status(404); });
+    pm.test('Missing user is rejected', function () { pm.expect(response.error).to.eql('User not found.'); });
+  language: text/javascript
+order: 8000

@@ -1,36 +1,18 @@
 $kind: http-request
-url: "{{base_url}}/api/upload"
+url: '{{base_url}}/api/upload'
 method: POST
-headers:
-  - key: Cookie
-    value: token={{user_token}}
 body:
   type: formdata
   content:
-    - type: file
-      key: file
-      src:
-        - postman/fixtures/quota_sample.txt
-      description: "User file count already equals the quota."
-      disabled: false
+  - type: file
+    key: file
+    src:
+    - /F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt
+    disabled: false
 scripts:
-  - type: afterResponse
-    code: "let response = pm.response.json();\r
-
-      \r
-
-      pm.test(\"Status code is 403\", function () {\r
-
-      \    pm.response.to.have.status(403);\r
-
-      });\r
-
-      \r
-
-      pm.test(\"Quota message is returned\", function () {\r
-
-      \    pm.expect(response.error).to.include(\"limit of\");\r
-
-      });"
-    language: text/javascript
-order: 2000
+- type: afterResponse
+  code: "let data = pm.response.json();\npm.test('Status code is 403', function ()\
+    \ { pm.response.to.have.status(403); });\npm.test('Upload is rejected at quota',\
+    \ function () {\n    pm.expect(data.error).to.include('limit of 1 files');\n});"
+  language: text/javascript
+order: 8000

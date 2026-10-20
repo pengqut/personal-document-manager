@@ -1,28 +1,17 @@
 $kind: http-request
-url: "{{base_url}}/api/files/999999999/category"
+url: '{{base_url}}/api/files/999999999/category'
 method: POST
 body:
-  type: urlencoded
-  content:
-    category: image
+  type: json
+  content: |-
+    {
+      "category": "image"
+    }
 scripts:
-  - type: afterResponse
-    code: "let response = pm.response.json();\r
-
-      \r
-
-      pm.test(\"Status code is 404\", function () {\r
-
-      \    pm.response.to.have.status(404);\r
-
-      });\r
-
-      \r
-
-      pm.test(\"Missing file is rejected\", function () {\r
-
-      \    pm.expect(response.error).to.eql(\"File not found.\");\r
-
-      });"
-    language: text/javascript
+- type: afterResponse
+  code: "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Missing file is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"
+  language: text/javascript
 order: 3000
+headers:
+- key: Content-Type
+  value: application/json

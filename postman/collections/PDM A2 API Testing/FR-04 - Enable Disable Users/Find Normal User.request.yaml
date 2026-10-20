@@ -1,0 +1,26 @@
+$kind: http-request
+url: '{{base_url}}/api/admin/users'
+method: GET
+headers:
+- key: Cookie
+  value: 'token={{admin_token}}'
+scripts:
+- type: afterResponse
+  code: |-
+    let response = pm.response.json();
+    pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+    pm.test('Users array is returned', function () { pm.expect(response.users).to.be.an('array'); });
+    let username = pm.environment.get('user_username') || 'fr02user';
+    let user = response.users.find(function (item) { return item.username === username; });
+    pm.test('Configured normal user is listed', function () { pm.expect(user).to.exist; });
+    if (user) {
+        pm.test('Required user information is returned', function () {
+            pm.expect(user).to.have.property('id');
+            pm.expect(user).to.have.property('enabled');
+            pm.expect(user).to.have.property('file_quota');
+            pm.expect(user).to.have.property('file_count');
+        });
+        pm.environment.set('user_id', String(user.id));
+    }
+  language: text/javascript
+order: 2000

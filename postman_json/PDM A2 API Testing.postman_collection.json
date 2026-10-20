@@ -1,0 +1,4874 @@
+{
+  "info": {
+    "_postman_id": "f345bf25-a8a6-46df-bea6-0cec4853cc15",
+    "name": "PDM A2 API Testing",
+    "description": "Postman API tests for the IFN636 A2 Personal Document Manager.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "58908141"
+  },
+  "item": [
+    {
+      "name": "FR-01 - Initial Administrator Creation",
+      "item": [
+        {
+          "name": "Setup Admin - Invalid Fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {\n    pm.response.to.have.status(400);\n});\npm.test('Expected setup error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Username must be 5 to 10 characters. Only letters, numbers and underscore are allowed.\");\n});\n\npm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),\n    method: 'GET'\n}, function (error, result) {\n    pm.test('Setup status request succeeds', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n    });\n    if (!error && result) {\n        pm.test('Setup initialized is false', function () {\n            pm.expect(result.json().initialized).to.eql(false);\n        });\n    }\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admi\",\n  \"password\": \"Abcdefg1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/setup",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "setup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup Admin - Invalid Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {\n    pm.response.to.have.status(400);\n});\npm.test('Expected setup error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Password must be at least 8 characters.\");\n});\n\npm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),\n    method: 'GET'\n}, function (error, result) {\n    pm.test('Setup status request succeeds', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n    });\n    if (!error && result) {\n        pm.test('Setup initialized is false', function () {\n            pm.expect(result.json().initialized).to.eql(false);\n        });\n    }\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin001\",\n  \"password\": \"weak\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/setup",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "setup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup Admin - Valid",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),\n    method: 'GET'\n}, function (error, result) {\n    pm.test('Setup status request succeeds', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n    });\n    if (!error && result) {\n        pm.test('Setup initialized is false', function () {\n            pm.expect(result.json().initialized).to.eql(false);\n        });\n    }\n});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Administrator setup succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\n\npm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),\n    method: 'GET'\n}, function (error, result) {\n    pm.test('Setup status request succeeds', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n    });\n    if (!error && result) {\n        pm.test('Setup initialized is true', function () {\n            pm.expect(result.json().initialized).to.eql(true);\n        });\n    }\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin001\",\n  \"password\": \"Abcdefg1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/setup",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "setup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Setup Admin - Repeated Setup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () {\n    pm.response.to.have.status(409);\n});\npm.test('Expected setup error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Administrator setup is already complete.\");\n});\n\npm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/setup-status'),\n    method: 'GET'\n}, function (error, result) {\n    pm.test('Setup status request succeeds', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n    });\n    if (!error && result) {\n        pm.test('Setup initialized is true', function () {\n            pm.expect(result.json().initialized).to.eql(true);\n        });\n    }\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin002\",\n  \"password\": \"Abcdefg1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/setup",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "setup"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "FR-02 - Admin Login and Access Control",
+      "item": [
+        {
+          "name": "Prepare Administrator",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Development/test database only. Existing administrator credentials are never reset.\npm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Setup status is available', function () {\n    pm.response.to.have.status(200);\n    pm.expect(typeof pm.response.json().initialized).to.eql('boolean');\n});\n\nfunction verifyAdministrator() {\n    pm.sendRequest({\n        url: pm.variables.replaceIn('{{base_url}}/api/admin/login'),\n        method: 'POST',\n        header: {'Content-Type': 'application/json'},\n        body: {\n            mode: 'raw',\n            raw: JSON.stringify({\n                username: pm.variables.get('admin_username'),\n                password: pm.variables.get('admin_password')\n            })\n        }\n    }, function (error, result) {\n        pm.test('Prepared administrator accepts the configured credentials', function () {\n            pm.expect(error).to.eql(null);\n            pm.expect(result.code).to.eql(200);\n            pm.expect(result.json().ok).to.eql(true);\n            pm.expect(result.json().username).to.eql(pm.variables.get('admin_username'));\n        });\n        if (error || !result || result.code !== 200) return;\n        var match = (result.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);\n        pm.test('Administrator preparation returns a session', function () {\n            pm.expect(Boolean(match)).to.eql(true);\n        });\n        if (!match) return;\n        pm.sendRequest({\n            url: pm.variables.replaceIn('{{base_url}}/api/logout'),\n            method: 'POST',\n            header: {Cookie: 'token=' + match[1]}\n        }, function (logoutError, logoutResult) {\n            pm.test('Administrator preparation session is cleared', function () {\n                pm.expect(logoutError).to.eql(null);\n                pm.expect(logoutResult.code).to.eql(200);\n                pm.expect(logoutResult.json().ok).to.eql(true);\n            });\n        });\n    });\n}\n\nif (pm.response.code === 200) {\n    var initialized = pm.response.json().initialized;\n    if (initialized === true) {\n        verifyAdministrator();\n    } else if (initialized === false) {\n        pm.sendRequest({\n            url: pm.variables.replaceIn('{{base_url}}/api/admin/setup'),\n            method: 'POST',\n            header: {'Content-Type': 'application/json'},\n        body: {\n            mode: 'raw',\n            raw: JSON.stringify({\n                username: pm.variables.get('admin_username'),\n                password: pm.variables.get('admin_password')\n            })\n        }\n        }, function (error, result) {\n            pm.test('Missing administrator is initialized', function () {\n                pm.expect(error).to.eql(null);\n                pm.expect(result.code).to.eql(200);\n                pm.expect(result.json().ok).to.eql(true);\n            });\n            if (!error && result && result.code === 200) verifyAdministrator();\n        });\n    }\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/setup-status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "setup-status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Prepare Test User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Development/test database only; run Prepare Administrator first.\n// This dedicated account is kept for subsequent runs.\npm.variables.set('user_username', 'fr02user');\npm.variables.set('user_password', 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Test user is created or already exists', function () {\n    pm.expect([200, 409]).to.include(pm.response.code);\n    if (pm.response.code === 200) {\n        pm.expect(pm.response.json().ok).to.eql(true);\n    } else {\n        pm.expect(pm.response.json().error).to.eql('Username already exists.');\n    }\n});\n\n// A duplicate response alone does not prove the account is usable.\nif (pm.response.code === 200 || pm.response.code === 409) {\n    pm.sendRequest({\n        url: pm.variables.replaceIn('{{base_url}}/api/login'),\n        method: 'POST',\n        header: {'Content-Type': 'application/json'},\n        body: {\n            mode: 'raw',\n            raw: JSON.stringify({\n                username: pm.variables.get('user_username'),\n                password: pm.variables.get('user_password')\n            })\n        }\n    }, function (error, result) {\n        pm.test('Prepared user is enabled and has the expected password', function () {\n            pm.expect(error).to.eql(null);\n            pm.expect(result.code).to.eql(200);\n            pm.expect(result.json().username).to.eql(pm.variables.get('user_username'));\n        });\n        if (error || !result || result.code !== 200) return;\n        var match = (result.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);\n        pm.test('Preparation login returns a session', function () {\n            pm.expect(Boolean(match)).to.eql(true);\n        });\n        if (!match) return;\n        pm.sendRequest({\n            url: pm.variables.replaceIn('{{base_url}}/api/logout'),\n            method: 'POST',\n            header: {Cookie: 'token=' + match[1]}\n        }, function (logoutError, logoutResult) {\n            pm.test('Preparation session is cleared', function () {\n                pm.expect(logoutError).to.eql(null);\n                pm.expect(logoutResult.code).to.eql(200);\n                pm.expect(logoutResult.json().ok).to.eql(true);\n            });\n        });\n    });\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login - Valid",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Development/test database only. Run Prepare Administrator first.\n// The preparation requests initialize/verify the administrator and ordinary test user.\npm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');\npm.variables.set('user_username', 'fr02user');\npm.variables.set('user_password', 'Abcdefg1');\npm.environment.unset('admin_token');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Operation succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\npm.test('Expected account logged in', function () {\n    pm.expect(pm.response.json().username).to.eql(pm.variables.get('admin_username'));\n});\npm.test('Session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.match(/token=[a-f0-9]{32}/);\n});\nif (pm.response.code === 200) {\n    var match = (pm.response.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);\n    if (match) pm.environment.set('admin_token', match[1]);\n}\npm.sendRequest({\n    url: pm.variables.replaceIn('{{base_url}}/api/admin/me'),\n    method: 'GET',\n    header: {Cookie: 'token=' + pm.environment.get('admin_token')}\n}, function (error, result) {\n    pm.test('Administrator can access the protected API', function () {\n        pm.expect(error).to.eql(null);\n        pm.expect(result.code).to.eql(200);\n        pm.expect(result.json().role).to.eql('admin');\n        pm.expect(result.json().username).to.eql(pm.variables.get('admin_username'));\n    });\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Logout - Prepare Unauthenticated Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Operation succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\npm.environment.unset('admin_token');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin API - Unauthenticated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () {\n    pm.response.to.have.status(401);\n});\npm.test('Expected error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Not logged in.\");\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login - Wrong Password",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Development/test database only. Run Prepare Administrator first.\n// The preparation requests initialize/verify the administrator and ordinary test user.\npm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');\npm.variables.set('user_username', 'fr02user');\npm.variables.set('user_password', 'Abcdefg1');\npm.variables.set('wrong_password', pm.variables.get('admin_password') + '_wrong');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () {\n    pm.response.to.have.status(401);\n});\npm.test('Expected error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Username or password is incorrect.\");\n});\npm.test('Rejected login does not issue a session', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.eql('');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{wrong_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login - Normal User Rejected",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Development/test database only. Run Prepare Administrator first.\n// The preparation requests initialize/verify the administrator and ordinary test user.\npm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');\npm.variables.set('user_username', 'fr02user');\npm.variables.set('user_password', 'Abcdefg1');\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () {\n    pm.response.to.have.status(401);\n});\npm.test('Expected error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Username or password is incorrect.\");\n});\npm.test('Rejected login does not issue a session', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.eql('');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Administrator Rejected",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Development/test database only. Run Prepare Administrator first.\n// The preparation requests initialize/verify the administrator and ordinary test user.\npm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');\npm.variables.set('user_username', 'fr02user');\npm.variables.set('user_password', 'Abcdefg1');\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () {\n    pm.response.to.have.status(401);\n});\npm.test('Expected error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Username or password is incorrect.\");\n});\npm.test('Rejected login does not issue a session', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.eql('');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Prepare Permission Test",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Development/test database only. Run Prepare Administrator first.\n// The preparation requests initialize/verify the administrator and ordinary test user.\npm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');\npm.variables.set('user_username', 'fr02user');\npm.variables.set('user_password', 'Abcdefg1');\npm.environment.unset('user_token');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Operation succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\npm.test('Expected account logged in', function () {\n    pm.expect(pm.response.json().username).to.eql(pm.variables.get('user_username'));\n});\npm.test('Session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.match(/token=[a-f0-9]{32}/);\n});\nif (pm.response.code === 200) {\n    var match = (pm.response.headers.get('Set-Cookie') || '').match(/token=([a-f0-9]{32})/);\n    if (match) pm.environment.set('user_token', match[1]);\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin API - Normal User Forbidden",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403', function () {\n    pm.response.to.have.status(403);\n});\npm.test('Expected error is returned', function () {\n    pm.expect(pm.response.json().error).to.eql(\"Administrator rights are required.\");\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Logout - Clean Up Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Operation succeeds', function () {\n    pm.expect(pm.response.json().ok).to.eql(true);\n});\npm.environment.unset('user_token');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "FR-03 - Normal User List",
+      "item": [
+        {
+          "name": "Admin Login - Prepare",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(response.ok).to.eql(true); });\nlet cookie = pm.response.headers.get('Set-Cookie') || '';\nlet match = cookie.match(/token=([^;]+)/);\npm.test('Admin session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });\nif (match) pm.environment.set('admin_token', match[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Normal Users - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Users array is returned', function () { pm.expect(response.users).to.be.an('array'); });\nlet username = pm.environment.get('user_username') || 'fr02user';\nlet user = response.users.find(function (item) { return item.username === username; });\npm.test('Configured normal user is listed', function () { pm.expect(user).to.exist; });\nif (user) {\n    pm.test('Required user information is returned', function () {\n        pm.expect(user).to.have.property('id');\n        pm.expect(user).to.have.property('enabled');\n        pm.expect(user).to.have.property('file_quota');\n        pm.expect(user).to.have.property('file_count');\n    });\n    pm.environment.set('user_id', String(user.id));\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Prepare FR03 User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let suffix = Date.now().toString().slice(-8);\r\n\r\npm.environment.set(\"user_username\", \"u\" + suffix);\r\npm.environment.set(\"user_password\", \"Abcdefg1\");\r\npm.environment.set(\"user_id\", \"\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"FR03 test user is created\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"username\": \"{{user_username}}\",\r\n  \"password\": \"{{user_password}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Prepare Permission Test",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('user_username', pm.environment.get('user_username') || 'fr02user');\npm.variables.set('user_password', pm.environment.get('user_password') || 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User login succeeds', function () { pm.expect(response.ok).to.eql(true); });\nlet cookie = pm.response.headers.get('Set-Cookie') || '';\nlet match = cookie.match(/token=([^;]+)/);\npm.test('User session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });\nif (match) pm.environment.set('user_token', match[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Normal Users - Normal User Forbidden",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 403', function () { pm.response.to.have.status(403); });\npm.test('Normal user cannot access admin user list', function () {\n    pm.expect(response.error).to.eql('Administrator rights are required.');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Normal Users - Unauthenticated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 401', function () { pm.response.to.have.status(401); });\npm.test('Unauthenticated access is rejected', function () {\n    pm.expect(response.error).to.eql('Not logged in.');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token=invalid-session-token"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "FR-04 - Enable Disable Users",
+      "item": [
+        {
+          "name": "Admin Login - Prepare",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(response.ok).to.eql(true); });\nlet cookie = pm.response.headers.get('Set-Cookie') || '';\nlet match = cookie.match(/token=([^;]+)/);\npm.test('Admin session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });\nif (match) pm.environment.set('admin_token', match[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Find Normal User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Users array is returned', function () { pm.expect(response.users).to.be.an('array'); });\nlet username = pm.environment.get('user_username') || 'fr02user';\nlet user = response.users.find(function (item) { return item.username === username; });\npm.test('Configured normal user is listed', function () { pm.expect(user).to.exist; });\nif (user) {\n    pm.test('Required user information is returned', function () {\n        pm.expect(user).to.have.property('id');\n        pm.expect(user).to.have.property('enabled');\n        pm.expect(user).to.have.property('file_quota');\n        pm.expect(user).to.have.property('file_count');\n    });\n    pm.environment.set('user_id', String(user.id));\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Prepare Existing Session",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('user_username', pm.environment.get('user_username') || 'fr02user');\npm.variables.set('user_password', pm.environment.get('user_password') || 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\n\npm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\npm.test(\"User login succeeds\", function () {\n    pm.expect(response.ok).to.eql(true);\n});\n\nlet setCookie = pm.response.headers.get(\"Set-Cookie\") || \"\";\nlet match = setCookie.match(/token=([^;]+)/);\n\npm.test(\"User session cookie is returned\", function () {\n    pm.expect(match).to.not.eql(null);\n});\n\nif (match) {\n    pm.environment.set(\"user_token\", match[1]);\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disable Normal User - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User is disabled', function () {\n    pm.expect(response.ok).to.eql(true);\n    pm.expect(response.enabled).to.eql(false);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disabled User - Existing Session Rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 401', function () { pm.response.to.have.status(401); });\npm.test('Existing session is invalid after disable', function () {\n    pm.expect(response.error).to.eql('Not logged in.');\n});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableCookies": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disabled User - New Login Rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 401', function () { pm.response.to.have.status(401); });\npm.test('Disabled user cannot create a new session', function () {\n    pm.expect(response.error).to.eql('Username or password is incorrect.');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Status - Rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 400', function () { pm.response.to.have.status(400); });\npm.test('Invalid status is rejected', function () {\n    pm.expect(response.error).to.eql('Invalid enabled value.');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": \"maybe\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Missing User - Rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 404', function () { pm.response.to.have.status(404); });\npm.test('Missing user is rejected', function () { pm.expect(response.error).to.eql('User not found.'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/999999/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "999999",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Re-enable User - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User is re-enabled', function () {\n    pm.expect(response.ok).to.eql(true);\n    pm.expect(response.enabled).to.eql(true);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - After Re-enable",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('user_username', pm.environment.get('user_username') || 'fr02user');\npm.variables.set('user_password', pm.environment.get('user_password') || 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User login succeeds', function () { pm.expect(response.ok).to.eql(true); });\nlet cookie = pm.response.headers.get('Set-Cookie') || '';\nlet match = cookie.match(/token=([^;]+)/);\npm.test('User session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });\nif (match) pm.environment.set('user_token', match[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "FR-05 - Individual File Quota",
+      "item": [
+        {
+          "name": "Admin Login - Prepare",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('admin_username', pm.environment.get('admin_username') || 'admin001');\npm.variables.set('admin_password', pm.environment.get('admin_password') || 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(response.ok).to.eql(true); });\nlet cookie = pm.response.headers.get('Set-Cookie') || '';\nlet match = cookie.match(/token=([^;]+)/);\npm.test('Admin session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });\nif (match) pm.environment.set('admin_token', match[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Find Normal User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Users array is returned', function () { pm.expect(response.users).to.be.an('array'); });\nlet username = pm.environment.get('user_username') || 'fr02user';\nlet user = response.users.find(function (item) { return item.username === username; });\npm.test('Configured normal user is listed', function () { pm.expect(user).to.exist; });\nif (user) {\n    pm.test('Required user information is returned', function () {\n        pm.expect(user).to.have.property('id');\n        pm.expect(user).to.have.property('enabled');\n        pm.expect(user).to.have.property('file_quota');\n        pm.expect(user).to.have.property('file_count');\n    });\n    pm.environment.set('user_id', String(user.id));\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Prepare Usage Test",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set('user_username', pm.environment.get('user_username') || 'fr02user');\npm.variables.set('user_password', pm.environment.get('user_password') || 'Abcdefg1');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User login succeeds', function () { pm.expect(response.ok).to.eql(true); });\nlet cookie = pm.response.headers.get('Set-Cookie') || '';\nlet match = cookie.match(/token=([^;]+)/);\npm.test('User session cookie is returned', function () { pm.expect(Boolean(match)).to.eql(true); });\nif (match) pm.environment.set('user_token', match[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Valid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Expected quota result is returned', function () {\n    pm.expect(response.ok).to.eql(true);\n    pm.expect(response.file_quota).to.eql(5);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Negative",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 400', function () { pm.response.to.have.status(400); });\npm.test('Expected quota result is returned', function () {\n    pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Fractional",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 400', function () { pm.response.to.have.status(400); });\npm.test('Expected quota result is returned', function () {\n    pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"1.5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Non-numeric",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 400', function () { pm.response.to.have.status(400); });\npm.test('Expected quota result is returned', function () {\n    pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Empty",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 400', function () { pm.response.to.have.status(400); });\npm.test('Expected quota result is returned', function () {\n    pm.expect(response.error).to.eql('file_quota must be a non-negative integer.');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Invalid Quotas Did Not Change Value",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\nlet user = response.users.find(function (item) { return String(item.id) === String(pm.environment.get('user_id')); });\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Previous valid quota remains 5', function () { pm.expect(user.file_quota).to.eql(5); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Zero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Zero quota is stored', function () { pm.expect(response.file_quota).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Missing User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 404', function () { pm.response.to.have.status(404); });\npm.test('Missing user is rejected', function () { pm.expect(response.error).to.eql('User not found.'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/999999/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "999999",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Normal User Forbidden",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Unauthenticated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token=invalid-session-token"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Prepare Quota For Usage",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"100\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Prepare Uploads",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"User login succeeds\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});\r\n\r\npm.test(\"Correct user is logged in\", function () {\r\n    pm.expect(response.username).to.eql(\r\n        pm.environment.get(\"user_username\")\r\n    );\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"username\": \"{{user_username}}\",\r\n  \"password\": \"{{user_password}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Usage File 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "/F:/QUT study/2026 Semester 2/IFN636/quota_sample.txt"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Usage File 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "/F:/QUT study/2026 Semester 2/IFN636/quota_sample.txt"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Usage Before Lowering Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Two files exist before lowering quota\", function () {\r\n    pm.expect(response.used).to.eql(2);\r\n    pm.expect(response.user_file_limit).to.eql(3);\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/limits",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "limits"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Below Current Usage",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Quota can be below current usage without deleting files', function () {\n    pm.expect(response.file_quota).to.eql(1);\n    pm.expect(response.file_count).to.be.above(response.file_quota);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "FR-06 - Upload Quota Enforcement",
+      "item": [
+        {
+          "name": "Admin Login - Prepare",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Admin session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Find Normal User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Users array is returned', function () { pm.expect(response.users).to.be.an('array'); });\nlet username = pm.environment.get('user_username') || 'fr02user';\nlet user = response.users.find(function (item) { return item.username === username; });\npm.test('Configured normal user is listed', function () { pm.expect(user).to.exist; });\nif (user) {\n    pm.test('Required user information is returned', function () {\n        pm.expect(user).to.have.property('id');\n        pm.expect(user).to.have.property('enabled');\n        pm.expect(user).to.have.property('file_quota');\n        pm.expect(user).to.have.property('file_count');\n    });\n    pm.environment.set('user_id', String(user.id));\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Prepare FR06 User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let suffix = Date.now().toString().slice(-8);\npm.environment.set('user_username', 'u' + suffix);\npm.environment.set('user_password', 'Abcdefg1');\npm.environment.set('user_id', '');\npm.environment.set('file_id', '');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('FR06 user is created', function () { pm.expect(data.ok).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Find FR06 User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\nlet username = pm.environment.get('user_username');\nlet user = data.users.find(function (item) { return item.username === username; });\npm.test('FR06 user is listed', function () { pm.expect(user).to.exist; });\nif (user) {\n    pm.environment.set('user_id', String(user.id));\n    pm.test('FR06 user starts with no files', function () { pm.expect(user.file_count).to.eql(0); });\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read Current Usage",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\nlet used = Number(response.used);\npm.environment.set('used_start', String(used));\npm.environment.set('quota_one_more', String(used + 1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/limits",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "limits"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - One",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Quota is 1 and usage is 0', function () {\n    pm.expect(data.file_quota).to.eql(1);\n    pm.expect(data.file_count).to.eql(0);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - One More Than Usage",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Prepare",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Correct user is logged in', function () { pm.expect(data.username).to.eql(pm.environment.get('user_username')); });\npm.test('User session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload - Below Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Upload succeeds below quota', function () { pm.expect(data.ok).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "/F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read Usage - At Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Usage is 1 of 1', function () {\n    pm.expect(data.user_file_limit).to.eql(1);\n    pm.expect(data.used).to.eql(1);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/limits",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "limits"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload - At Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 403', function () { pm.response.to.have.status(403); });\npm.test('Upload is rejected at quota', function () {\n    pm.expect(data.error).to.include('limit of 1 files');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "/F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login - Prepare Second File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Admin session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Two",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Quota is 2 with one existing file', function () {\n    pm.expect(data.file_quota).to.eql(2);\n    pm.expect(data.file_count).to.eql(1);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Add Second File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Correct user is logged in', function () { pm.expect(data.username).to.eql(pm.environment.get('user_username')); });\npm.test('User session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload - Second File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Second upload succeeds while below quota', function () { pm.expect(data.ok).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "/F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read Usage - Two Files",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Usage is 2 of 2', function () {\n    pm.expect(data.user_file_limit).to.eql(2);\n    pm.expect(data.used).to.eql(2);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/limits",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "limits"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login - Lower Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Admin session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Below Current Usage",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Quota is below current usage', function () {\n    pm.expect(data.file_quota).to.eql(1);\n    pm.expect(data.file_count).to.eql(2);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - One Slot After Delete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Check Above Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Correct user is logged in', function () { pm.expect(data.username).to.eql(pm.environment.get('user_username')); });\npm.test('User session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload - Above Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 403', function () { pm.response.to.have.status(403); });\npm.test('Upload is rejected above quota', function () {\n    pm.expect(data.error).to.include('limit of 1 files');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "/F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login - Set Zero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Admin session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Zero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Quota is zero while files are retained', function () {\n    pm.expect(data.file_quota).to.eql(0);\n    pm.expect(data.file_count).to.eql(2);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Check Zero Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Correct user is logged in', function () { pm.expect(data.username).to.eql(pm.environment.get('user_username')); });\npm.test('User session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload - Zero Quota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 403', function () { pm.response.to.have.status(403); });\npm.test('Upload is rejected with zero quota', function () {\n    pm.expect(data.error).to.include('limit of 0 files');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "/F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Login - Restore For Delete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Admin login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Admin session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Quota - Two For Delete Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Quota is restored to 2 with two files', function () {\n    pm.expect(data.file_quota).to.eql(2);\n    pm.expect(data.file_count).to.eql(2);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_quota\": \"2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{user_id}}/quota",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{user_id}}",
+                "quota"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "User Login - Delete Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('User login succeeds', function () { pm.expect(data.ok).to.eql(true); });\npm.test('Correct user is logged in', function () { pm.expect(data.username).to.eql(pm.environment.get('user_username')); });\npm.test('User session cookie is returned', function () {\n    pm.expect(pm.response.headers.get('Set-Cookie') || '').to.include('token=');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{user_username}}\",\n  \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Files - Prepare Delete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Two test files are present', function () { pm.expect(data.files.length).to.be.at.least(2); });\nif (data.files.length > 0) pm.environment.set('file_id', String(data.files[0].id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/files",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "files"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete One File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Delete succeeds', function () { pm.expect(data.ok).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/files/{{file_id}}/delete",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "files",
+                "{{file_id}}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read Usage - After Delete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Delete frees one slot', function () {\n    pm.expect(data.user_file_limit).to.eql(2);\n    pm.expect(data.used).to.eql(1);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/limits",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "limits"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload - After File Deleted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Upload succeeds after delete frees a slot', function () { pm.expect(data.ok).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "/F:/QUT study/2026 Semester 2/IFN636/A2/postman/fixtures/quota_sample.txt"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read Usage - Final",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let data = pm.response.json();\npm.test('Status code is 200', function () { pm.response.to.have.status(200); });\npm.test('Final usage is 2 of 2', function () {\n    pm.expect(data.user_file_limit).to.eql(2);\n    pm.expect(data.used).to.eql(2);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/limits",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "limits"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "A1 - Regression APIs",
+      "item": [
+        {
+          "name": "Authentication",
+          "item": [
+            {
+              "name": "Login",
+              "item": [
+                {
+                  "name": "Login - Valid Credentials",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Login is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});\r\n\r\npm.test(\"Correct username is returned\", function () {\r\n    pm.expect(response.username).to.eql(\"A2Test01\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test01\",\n  \"password\": \"Testpassword123\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "login"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Login - Unknown User",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 401\", function () {\r\n    pm.response.to.have.status(401);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Unknown user is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\r\n        \"Username or password is incorrect.\"\r\n    );\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test01non\",\n  \"password\": \"Testpassword123\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "login"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Login - Wrong Password",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 401\", function () {\r\n    pm.response.to.have.status(401);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Incorrect credentials are rejected\", function () {\r\n    pm.expect(response.error).to.eql(\r\n        \"Username or password is incorrect.\"\r\n    );\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test01\",\n  \"password\": \"Testpassword123wrong\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "login"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Register",
+              "item": [
+                {
+                  "name": "Register - Invalid Username",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 400\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Validation error is returned\", function () {\r\n    pm.expect(response).to.have.property(\"error\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test01234\",\n  \"password\": \"Testpassword123\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/register",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "register"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Register - Invalid Password",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 400\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Validation error is returned\", function () {\r\n    pm.expect(response).to.have.property(\"error\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test03\",\n  \"password\": \"Testpassword\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/register",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "register"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Register - Duplicate Username",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 409\", function () {\r\n    pm.response.to.have.status(409);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Duplicate username is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"Username already exists.\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test01\",\n  \"password\": \"Testpassword123\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/register",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "register"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Register - Valid User",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Registration is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test01\",\n  \"password\": \"Testpassword123\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/register",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "register"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Register(sec)",
+              "item": [
+                {
+                  "name": "Register - Second User",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test02\",\n  \"password\": \"Testpassowrd123\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/register",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "register"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Login(sec)",
+              "item": [
+                {
+                  "name": "Login - Second User",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"A2Test02\",\n  \"password\": \"Testpassword123\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "login"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Logout - Valid Session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Logout is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/logout",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logout"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Current User - Authenticated",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Current user is returned\", function () {\r\n    pm.expect(response.username).to.eql(\"A2Test01\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "me"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Current User - Unauthenticated",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 401\", function () {\r\n    pm.response.to.have.status(401);\r\n});\r\n\r\npm.test(\"Unauthenticated request is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"Not logged in.\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "me"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Limits - Unauthenticated",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 401\", function () {\r\n    pm.response.to.have.status(401);\r\n});\r\n\r\npm.test(\"Unauthenticated request is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"Not logged in.\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/limits",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "limits"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "File",
+          "item": [
+            {
+              "name": "Upload",
+              "item": [
+                {
+                  "name": "Upload - No File",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 400\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Missing file is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"No file was sent.\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": []
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/upload",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "upload"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Upload - Valid Document",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Upload is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});\r\n\r\npm.test(\"File is classified as document\", function () {\r\n    pm.expect(response.category).to.eql(\"document\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": [
+                            "/F:/QUT study/2026 Semester 2/IFN636/api_test.txt"
+                          ]
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/upload",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "upload"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Upload - Unauthenticated",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 401\", function () {\r\n    pm.response.to.have.status(401);\r\n});\r\n\r\npm.test(\"Unauthenticated upload is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"Not logged in.\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": [
+                            "/F:/QUT study/2026 Semester 2/IFN636/api_test.txt"
+                          ]
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/upload",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "upload"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Upload - Unknown Extension",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Upload is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});\r\n\r\npm.test(\"Unknown extension is classified as other\", function () {\r\n    pm.expect(response.category).to.eql(\"other\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": [
+                            "/F:/QUT study/2026 Semester 2/IFN636/sample.xyz"
+                          ]
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/api/upload",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "upload"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Download",
+              "item": [
+                {
+                  "name": "Download - Missing File",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Missing file is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/api/download/999999999",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "download",
+                        "999999999"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Download Own File - Success",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Downloaded file content is correct\", function () {\r\n    pm.expect(pm.response.text()).to.include(\"Postman API test file\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/api/download/{{test_file_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "download",
+                        "{{test_file_id}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Download(sec)",
+              "item": [
+                {
+                  "name": "Download Other User File",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Other user's file cannot be downloaded\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/api/download/{{test_file_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "download",
+                        "{{test_file_id}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Delete",
+              "item": [
+                {
+                  "name": "Delete Own File - Success",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"File deletion is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/api/files/{{test_file_id}}/delete",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "files",
+                        "{{test_file_id}}",
+                        "delete"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Same File Again",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Deleted file no longer exists\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/api/files/{{test_file_id}}/delete",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "api",
+                        "files",
+                        "{{test_file_id}}",
+                        "delete"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "List Files - Unauthenticated",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 401\", function () {\r\n    pm.response.to.have.status(401);\r\n});\r\n\r\npm.test(\"Unauthenticated request is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"Not logged in.\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/files",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Files - Authenticated",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"Files list is returned\", function () {\r\n    pm.expect(response.files).to.be.an(\"array\");\r\n});\r\n\r\n// Find the file uploaded earlier\r\nlet testFile = response.files.find(\r\n    file => file.filename === \"api_test.txt\"\r\n);\r\n\r\npm.test(\"Uploaded test file is listed\", function () {\r\n    pm.expect(testFile).to.exist;\r\n});\r\n\r\n// Save its ID for later requests\r\nif (testFile) {\r\n    pm.environment.set(\"test_file_id\", testFile.id);\r\n}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/files",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Other User File",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Other user's file cannot be deleted\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/files/{{test_file_id}}/delete",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files",
+                    "{{test_file_id}}",
+                    "delete"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Verify File Removed From List",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\nlet deletedFile = response.files.find(\r\n    file => file.id == pm.environment.get(\"test_file_id\")\r\n);\r\n\r\npm.test(\"Deleted file is not in file list\", function () {\r\n    pm.expect(deletedFile).to.not.exist;\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/files",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Category",
+          "item": [
+            {
+              "name": "Change Category - Valid",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Category update is successful\", function () {\r\n    pm.expect(response.ok).to.eql(true);\r\n});\r\n\r\npm.test(\"Category is updated to image\", function () {\r\n    pm.expect(response.category).to.eql(\"image\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"image\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/files/{{test_file_id}}/category",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files",
+                    "{{test_file_id}}",
+                    "category"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Change Category - Valid-1",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 400\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\npm.test(\"Invalid category is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"Not a valid category.\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"random\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/files/{{test_file_id}}/category",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files",
+                    "{{test_file_id}}",
+                    "category"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Change Category - Missing File",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Missing file is rejected\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"image\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/files/999999999/category",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files",
+                    "999999999",
+                    "category"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Verify Category Changed",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\nlet testFile = response.files.find(\r\n    file => file.id == pm.environment.get(\"test_file_id\")\r\n);\r\n\r\npm.test(\"Test file is found\", function () {\r\n    pm.expect(testFile).to.exist;\r\n});\r\n\r\npm.test(\"Updated category is returned\", function () {\r\n    pm.expect(testFile.category).to.eql(\"image\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/files",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Category(sec)",
+          "item": [
+            {
+              "name": "Change Other User File Category",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\npm.test(\"Other user's file cannot be modified\", function () {\r\n    pm.expect(response.error).to.eql(\"File not found.\");\r\n});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"document\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/files/{{test_file_id}}/category",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "files",
+                    "{{test_file_id}}",
+                    "category"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "A1 - Regression APIs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let response = pm.response.json();\r\n\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Content-Type is present\", function () {\r\n    pm.response.to.have.header(\"Content-Type\");\r\n});\r\n\r\npm.test(\"File size limit is 500 MB\", function () {\r\n    pm.expect(response.max_file_mb).to.eql(500);\r\n});\r\n\r\npm.test(\"File count limit is 100\", function () {\r\n    pm.expect(response.user_file_limit).to.eql(100);\r\n});\r\n\r\npm.test(\"Current usage is returned\", function () {\r\n    pm.expect(response).to.have.property(\"used\");\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/limits",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "limits"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

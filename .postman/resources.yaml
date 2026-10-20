@@ -1,9 +1,9 @@
 workspace:
   id: b85e9b49-11e5-46e4-922b-bbb54784b82e
-
-# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
-
 cloudResources:
   globals:
     ../postman/globals/workspace.globals.yaml: 722b2bba-3a9e-4adf-8d37-fac657e54410
-  collections: {}
+  collections:
+    ../postman/collections/PDM A2 API Testing: 58908141-f345bf25-a8a6-46df-bea6-0cec4853cc15
+  environments:
+    ../postman/environments/PDM Local Test-1.environment.yaml: 58908141-15674863-24d1-4b1c-a2ea-77c28d9eae35

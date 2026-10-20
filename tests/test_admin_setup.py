@@ -1,6 +1,8 @@
 import os
 import tempfile
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import admin_setup
@@ -9,8 +11,8 @@ import validate
 
 
 class AdminSetupFacadeTests(unittest.TestCase):
-    # Facade logic against a temporary SQLite database. Not a PostgreSQL
-    # proof; concurrent uniqueness is only guaranteed by the row lock.
+    # Facade logic against a temporary SQLite database, including SQLite's
+    # serialized writes. PostgreSQL row locking is tested separately.
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -58,6 +60,41 @@ class AdminSetupFacadeTests(unittest.TestCase):
         with self.db.transaction() as store:
             self.assertIsNone(store.get_user_by_username('admin002'))
             self.assertTrue(store.get_system_state()['admin_initialized'])
+
+    # Two simultaneous setup attempts create exactly one administrator.
+    def test_concurrent_setup_creates_only_one_admin(self):
+        barrier = threading.Barrier(2)
+
+        def setup_once(username):
+            barrier.wait(timeout=5)
+            try:
+                self.service.setup_admin(username, 'Abcdefg1')
+            except admin_setup.SetupClosedError:
+                return 'rejected', username
+            return 'created', username
+
+        with ThreadPoolExecutor(max_workers=2) as workers:
+            attempts = [
+                workers.submit(setup_once, username)
+                for username in ('admin001', 'admin002')
+            ]
+            results = [attempt.result(timeout=10) for attempt in attempts]
+
+        self.assertCountEqual(
+            [outcome for outcome, username in results],
+            ['created', 'rejected'],
+        )
+        winner = next(username for outcome, username in results if outcome == 'created')
+        with self.db.transaction() as store:
+            admins = store._execute(
+                database.users_table.select()
+                .where(database.users_table.c.role == 'admin')
+            ).mappings().all()
+            self.assertEqual(len(admins), 1)
+            self.assertEqual(admins[0]['username'], winner)
+            self.assertTrue(validate.check_password('Abcdefg1', admins[0]['password_hash']))
+            self.assertTrue(store.get_system_state()['admin_initialized'])
+        self.assertEqual(self.service.get_status(), {'initialized': True})
 
     # Invalid input and a username that belongs to a normal user leave
     # no administrator and keep the flag false.

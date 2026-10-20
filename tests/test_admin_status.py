@@ -152,6 +152,39 @@ class AdminStatusTests(unittest.TestCase):
 
         self.assertEqual(result['status'], 401)
 
+    # A failure after changing status and deleting sessions restores both.
+    def test_failed_disable_rolls_back_status_and_sessions(self):
+        user = self.create_normal_user()
+        admin_cookie = self.login_admin()
+        with self.db.transaction(write=True) as store:
+            other = store.create_user('bobuser1', validate.hash_password('Abcdefg1'))
+            store.create_session('target-session-1', user['id'])
+            store.create_session('target-session-2', user['id'])
+            store.create_session('other-session', other['id'])
+
+        set_user_enabled = database.Store.set_user_enabled
+
+        def fail_after_disable(store, user_id, enabled):
+            set_user_enabled(store, user_id, enabled)
+            raise database.StorageError('Simulated failure before commit.')
+
+        with patch.object(database.Store, 'set_user_enabled', fail_after_disable):
+            result = self.request(
+                f"/api/admin/users/{user['id']}/status",
+                {'enabled': 'false'},
+                admin_cookie,
+            )
+
+        self.assertEqual(result['status'], 503)
+        with self.db.transaction() as store:
+            self.assertEqual(store.get_user_by_id(user['id']), user)
+            for token in ('target-session-1', 'target-session-2'):
+                restored = store.get_user_by_token(token)
+                self.assertIsNotNone(restored)
+                self.assertEqual(restored['id'], user['id'])
+            self.assertEqual(store.get_user_by_id(other['id']), other)
+            self.assertIsNotNone(store.get_user_by_token('other-session'))
+
     # Disabled users cannot log in again.
     def test_disabled_user_cannot_login(self):
         user = self.create_normal_user()

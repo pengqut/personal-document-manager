@@ -154,7 +154,7 @@ tests/test_classify.py
 A consolidated test runner is provided to run all developer test files together:
 
 ```bash
-python tests/run_all_tests.py
+python tests/run_test.py
 ```
 
 The runner:
@@ -184,19 +184,6 @@ python -m pytest tests/test_validate.py -v
 
 This allows each developer to test their own feature independently before running the complete project test suite.
 
-## Testing Evidence
-
-Testing evidence may include:
-
-- Jira testing tasks
-- Individual software test files
-- Consolidated software test results
-- GitHub commits and pull requests
-- API testing results
-- Load testing results
-- Monitoring results
-
-These outputs will be used as evidence for the Assignment 2 report and demonstration.
 
 ## Deployment
 

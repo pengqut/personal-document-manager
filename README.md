@@ -29,6 +29,8 @@ unset DATABASE_URL
 unset PDM_DB_PATH
 export PDM_PORT=8080
 python app.py
+(for normal user) In web open: http://localhost/login.html
+(for admin user) In web oppen: http://localhost/admin-login.html
 ```
 
 ## How to run (PROD)
@@ -40,6 +42,8 @@ python -m pip install -r requirements.txt
 export DATABASE_URL='postgresql://DB_USER:DB_PASSWORD@DB_HOST:5432/pdm_prod'
 export PDM_PORT=8080
 python app.py
+(for normal user) In web open: http://localhost/login.html
+(for admin user) In web oppen: http://localhost/admin-login.html
 ```
 
 ## PostgreSQL Setup (Ubuntu EC2)

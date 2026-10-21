@@ -31,6 +31,8 @@ export PDM_PORT=8080
 python app.py
 (for normal user) In web open: http://localhost/login.html
 (for admin user) In web oppen: http://localhost/admin-login.html
+EC2: http://3.107.176.119/login.html
+http://pdm-alb-748530127.ap-southeast-2.elb.amazonaws.com/login.html
 ```
 
 ## How to run (PROD)
@@ -44,6 +46,8 @@ export PDM_PORT=8080
 python app.py
 (for normal user) In web open: http://localhost/login.html
 (for admin user) In web oppen: http://localhost/admin-login.html
+EC2: http://3.107.176.119/login.html
+http://pdm-alb-748530127.ap-southeast-2.elb.amazonaws.com/login.html
 ```
 
 ## PostgreSQL Setup (Ubuntu EC2)
